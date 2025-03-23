@@ -67,7 +67,7 @@ QR code ke channel YouTube:
   <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://youtube.com/@AnakAgungDuwiArsana" alt="YouTube QR">
 </p>
 
-## 📁 Folder `Contoh coding`
+## 📁 Folder `Kumpulan Contoh Koding`
 
 Berisi beberapa sketch contoh yang bisa kamu langsung flash ke ESP8266 untuk:
 - Mengontrol relay via WiFi
