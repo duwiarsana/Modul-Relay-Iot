@@ -24,6 +24,16 @@ This is a simple 2-channel IoT relay module based on ESP8266, designed for smart
 | Sensor Support | DHT11 via JST Connector  |
 | Tegangan Input | 5V DC                    |
 
+## 🧩 GPIO yang Digunakan
+
+| Fungsi       | GPIO ESP8266 |
+|--------------|---------------|
+| Relay 1      | GPIO 4 (D2)   |
+| Relay 2      | GPIO 5 (D1)   |
+| Sensor DHT11 | GPIO 14 (D5)  |
+
+> Pastikan GPIO yang digunakan di sketch sesuai dengan pinout ini agar modul berjalan dengan benar.
+
 ## 🔧 Instalasi Firmware
 
 1. Pasang ESP8266 ke board.
@@ -33,39 +43,48 @@ This is a simple 2-channel IoT relay module based on ESP8266, designed for smart
 
 Contoh firmware akan disediakan di folder `/Contoh coding`.
 
+---
+
 ## 💡 Contoh Penggunaan
 
 - Saklar lampu pintar
 - Kontrol pompa air otomatis berdasarkan suhu/kelembaban
 - Otomasi kipas ruangan
 
+---
+
+## 📺 Tonton Video Demo
+
+Klik gambar di bawah ini untuk menonton demo penggunaan modul ini:
+
+🎥 [Tonton di YouTube](https://www.youtube.com/watch?v=41Ir59VN2lw)
+
+[![Tonton Video Demo](https://img.youtube.com/vi/41Ir59VN2lw/0.jpg)](https://www.youtube.com/watch?v=41Ir59VN2lw)
+
+<p align="left">
+  <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://www.youtube.com/watch?v=41Ir59VN2lw" alt="QR YouTube">
+</p>
+
+---
+
 ## 🛒 Tempat Pembelian
 
-Modul ini bisa kamu beli di Tokopedia:
-👉 [Link Tokopedia](https://tokopedia.link/BubYYGYAYRb)
+Modul ini bisa kamu beli di Tokopedia:  
+👉 [https://tokopedia.link/BubYYGYAYRb](https://tokopedia.link/BubYYGYAYRb)
 
-## 🙌 Dukung Saya
+---
+
+## ☕ Dukung Saya
 
 Kalau kamu suka dengan proyek ini dan ingin support agar saya bisa terus berkarya:
 
-👉 **Saweria:** [https://saweria.co/duwiarsana](https://saweria.co/duwiarsana)  
-QR code buat langsung scan dari HP:
+👉 **Saweria:** [https://saweria.co/duwiarsana](https://saweria.co/duwiarsana)
 
 <p align="left">
   <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://saweria.co/duwiarsana" alt="Saweria QR">
 </p>
 
-## 📺 Tonton Video Terkait
-
-Lihat penjelasan lengkap modul ini di channel YouTube Anak Agung Duwi Arsana:
-
-👉 [https://youtube.com/@AnakAgungDuwiArsana](https://youtube.com/@AnakAgungDuwiArsana)
-
-QR code ke channel YouTube:
-
-<p align="left">
-  <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://youtube.com/@AnakAgungDuwiArsana" alt="YouTube QR">
-</p>
+---
 
 ## 📁 Folder `Kumpulan Contoh Koding`
 
@@ -75,13 +94,11 @@ Berisi beberapa sketch contoh yang bisa kamu langsung flash ke ESP8266 untuk:
 - Kombinasi relay + suhu
 - dan lainnya (akan terus bertambah)
 
+---
+
 ## 📄 Lisensi
 
 Proyek ini dirilis di bawah lisensi MIT. Silakan gunakan, modifikasi, dan bagikan sesuai kebutuhan, selama tetap menyertakan kredit ke pembuat asli.
-
----
-
-This project is licensed under the MIT License. Feel free to use, modify, and share, as long as attribution is given to the original author.
 
 ---
 
@@ -94,5 +111,5 @@ Pull request sangat welcome. Kalau ada saran, bug, atau ide pengembangan, langsu
 ## 📱 Sosial Media
 
 Dibuat oleh [Duwi Arsana](https://youtube.com/@AnakAgungDuwiArsana)  
-Website: [duwiarsana.com](https://duwiarsana.com)  
+Website: [https://duwiarsana.com](https://duwiarsana.com)  
 Email: anakagungduwiarsana@gmail.com
