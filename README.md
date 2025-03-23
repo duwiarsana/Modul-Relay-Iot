@@ -42,7 +42,7 @@ Contoh firmware akan disediakan di folder `/Contoh coding`.
 ## 🛒 Tempat Pembelian
 
 Modul ini bisa kamu beli di Tokopedia:
-👉 [Link Tokopedia - coming soon](https://tokopedia.com) *(akan diupdate begitu siap ya!)*
+👉 [Link Tokopedia](https://tokopedia.link/BubYYGYAYRb)
 
 ## 🙌 Dukung Saya
 
