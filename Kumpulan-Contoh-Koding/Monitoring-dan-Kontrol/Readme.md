@@ -61,7 +61,7 @@ Project ini dibuat oleh **Anak Agung Duwi Arsana** dan dirancang khusus untuk di
 - Grafik suhu real-time menggunakan Chart.js
 - UI responsive dan dark mode friendly
 
-<img src="tampilan-web.PNG" alt="Dashboard Tampilan" width="600"/>
+<img src="tampilan-web.jpg" alt="Dashboard Tampilan" width="600"/>
 
 ---
 
