@@ -3,6 +3,7 @@
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <DNSServer.h>
 #include <DHT.h>
 #include <EEPROM.h>
 
@@ -13,10 +14,13 @@ DHT dht(DHTPIN, DHTTYPE);
 #define RELAY1_PIN 4
 #define RELAY2_PIN 5
 
-const char* ssid = "SSID"; //ganti pakai nama hotspot yang ada
-const char* password = "PASSWORD"; //ganti juga password yang sesuai
+// Pengaturan Access Point (AP)
+const char* ap_ssid = "IoT-Smart-Relay";
+const char* ap_password = ""; // Kosongkan jika ingin open network tanpa password
 
 ESP8266WebServer server(80);
+DNSServer dnsServer;
+const byte DNS_PORT = 53;
 
 bool relay1 = false;
 bool relay2 = false;
@@ -48,7 +52,7 @@ void handleRoot() {
   <!-- Google Fonts & FontAwesome -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Chart.js -->
+  <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <style>
@@ -61,9 +65,6 @@ void handleRoot() {
       --primary: #00f2fe;
       --secondary: #4facfe;
       --success: #10b981;
-      --success-glow: rgba(16, 185, 129, 0.2);
-      --danger: #ef4444;
-      --danger-glow: rgba(239, 68, 68, 0.2);
     }
 
     * {
@@ -80,48 +81,53 @@ void handleRoot() {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
       padding: 20px;
-      overflow-x: hidden;
       position: relative;
+      overflow-x: hidden;
     }
 
-    /* Ambient Background Glows */
-    body::before, body::after {
+    /* Background Ambient Glows */
+    body::before {
       content: '';
       position: absolute;
       width: 300px;
       height: 300px;
+      background: var(--primary);
       border-radius: 50%;
       filter: blur(120px);
       z-index: -1;
-      opacity: 0.35;
-    }
-    body::before {
-      background: var(--primary);
+      opacity: 0.25;
       top: 10%;
       left: 10%;
     }
+
     body::after {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
       background: #8b5cf6;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: -1;
+      opacity: 0.25;
       bottom: 10%;
       right: 10%;
     }
 
     .container {
       width: 100%;
-      max-width: 680px;
-      margin: 0 auto;
+      max-width: 480px;
       z-index: 1;
     }
 
-    /* Header Styling */
+    /* Header */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 25px;
-      padding: 10px 5px;
+      margin-bottom: 24px;
     }
 
     .logo-area {
@@ -132,13 +138,13 @@ void handleRoot() {
 
     .logo-icon {
       background: linear-gradient(135deg, var(--secondary), var(--primary));
-      width: 42px;
-      height: 42px;
+      width: 46px;
+      height: 46px;
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+      box-shadow: 0 4px 20px rgba(0, 242, 254, 0.35);
     }
 
     .logo-icon i {
@@ -147,8 +153,9 @@ void handleRoot() {
     }
 
     .logo-title h1 {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
+      letter-spacing: -0.5px;
       background: linear-gradient(to right, #ffffff, #c7d2fe);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -160,78 +167,80 @@ void handleRoot() {
     }
 
     .status-badge {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 6px 12px;
+      border-radius: 20px;
       display: flex;
       align-items: center;
       gap: 8px;
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.2);
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
+    }
+
+    .status-badge span {
+      font-size: 10px;
+      font-weight: 700;
       color: var(--success);
+      letter-spacing: 0.5px;
     }
 
     .pulse-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       background-color: var(--success);
       border-radius: 50%;
-      animation: pulse 1.8s infinite;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: pulse 1.6s infinite;
     }
 
     @keyframes pulse {
-      0% { transform: scale(0.9); opacity: 0.6; }
-      50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px var(--success); }
-      100% { transform: scale(0.9); opacity: 0.6; }
-    }
-
-    /* Grid Section */
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-
-    @media (max-width: 580px) {
-      .grid {
-        grid-template-columns: 1fr;
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      }
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
       }
     }
 
-    /* Card Styling */
+    /* Cards Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-      transition: transform 0.3s ease, border-color 0.3s ease;
+      padding: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       position: relative;
       overflow: hidden;
     }
 
-    .card::before {
+    .card.active {
+      border-color: rgba(0, 242, 254, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 242, 254, 0.15);
+    }
+
+    .card.active::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 4px;
-      background: transparent;
-      transition: background 0.3s ease;
-    }
-
-    .card.active::before {
       background: linear-gradient(to right, var(--secondary), var(--primary));
-    }
-
-    .card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(255, 255, 255, 0.15);
     }
 
     .card-header {
@@ -242,33 +251,30 @@ void handleRoot() {
     }
 
     .card-title {
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 600;
-      color: var(--text-sub);
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
     .card-title i {
-      font-size: 18px;
-    }
-
-    .card.active .card-title {
-      color: var(--text-main);
+      font-size: 16px;
+      color: var(--text-sub);
+      transition: color 0.3s;
     }
 
     .card.active .card-title i {
       color: var(--primary);
-      text-shadow: 0 0 10px rgba(0, 242, 254, 0.4);
     }
 
-    /* Switch Component */
+    /* Switch Style */
     .switch {
       position: relative;
       display: inline-block;
-      width: 52px;
-      height: 28px;
+      width: 44px;
+      height: 24px;
     }
 
     .switch input {
@@ -280,24 +286,25 @@ void handleRoot() {
     .slider {
       position: absolute;
       cursor: pointer;
-      top: 0; left: 0; right: 0; bottom: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       background-color: #374151;
       transition: .3s;
-      border-radius: 34px;
-      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 24px;
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 20px;
-      width: 20px;
-      left: 3px;
-      bottom: 3px;
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
       background-color: #9ca3af;
       transition: .3s;
       border-radius: 50%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
     }
 
     input:checked + .slider {
@@ -305,94 +312,82 @@ void handleRoot() {
     }
 
     input:checked + .slider:before {
-      transform: translateX(24px);
+      transform: translateX(20px);
       background-color: #0b0f19;
     }
 
-    /* Value Display */
     .state-label {
       font-size: 26px;
-      font-weight: 700;
-      margin-top: 10px;
+      font-weight: 800;
+      color: var(--text-sub);
       letter-spacing: -0.5px;
+      transition: color 0.3s;
     }
 
     .state-label.active {
-      background: linear-gradient(to right, #ffffff, var(--primary));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #fff;
+      text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
     }
 
-    /* Temp Display */
-    .temp-value {
-      font-size: 54px;
-      font-weight: 800;
-      letter-spacing: -2px;
-      background: linear-gradient(to right, #ffffff, #93c5fd);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      display: flex;
-      align-items: flex-start;
-      line-height: 1.1;
-    }
-
-    .temp-unit {
-      font-size: 22px;
-      font-weight: 600;
-      color: var(--primary);
-      margin-top: 4px;
-      margin-left: 2px;
-    }
-
+    /* Temp Widget styles */
     .temp-info {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
+      gap: 4px;
       margin-bottom: 15px;
     }
 
-    /* Chart Container Card */
+    .temp-value {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: #fff;
+      display: flex;
+      align-items: baseline;
+    }
+
+    .temp-unit {
+      font-size: 18px;
+      color: var(--text-sub);
+      margin-left: 2px;
+      font-weight: 500;
+    }
+
+    /* Chart Card */
     .chart-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-      width: 100%;
-      margin-bottom: 25px;
+      padding: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      margin-bottom: 24px;
     }
 
     .chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
     .chart-title {
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 600;
-      color: var(--text-sub);
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
     .chart-title i {
-      color: #8b5cf6;
+      color: var(--primary);
     }
 
     /* Footer */
     footer {
       text-align: center;
-      padding: 15px 0;
+      font-size: 11px;
       color: var(--text-sub);
-      font-size: 12px;
-      width: 100%;
+      padding: 10px 0;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
-      margin-top: auto;
     }
 
     footer a {
@@ -422,7 +417,7 @@ void handleRoot() {
     </div>
     <div class="status-badge">
       <div class="pulse-dot"></div>
-      <span>CONNECTED</span>
+      <span>AP PORTAL</span>
     </div>
   </header>
 
@@ -620,15 +615,15 @@ void handleSetRelay() {
   server.send(200, "text/plain", "OK");
 }
 
+void handleNotFound() {
+  // Redirect ke root (Captive Portal)
+  server.sendHeader("Location", "http://192.168.4.1/", true);
+  server.send(302, "text/plain", "");
+}
+
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println(WiFi.localIP());
 
   pinMode(RELAY1_PIN, OUTPUT);
   pinMode(RELAY2_PIN, OUTPUT);
@@ -636,14 +631,30 @@ void setup() {
 
   dht.begin();
 
+  // Memulai mode Access Point (AP)
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ap_ssid, ap_password);
+
+  Serial.println("\nAccess Point Berhasil Dibuat!");
+  Serial.print("SSID: ");
+  Serial.println(ap_ssid);
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.softAPIP());
+
+  // Memulai DNS Server untuk Captive Portal (mengarahkan semua domain ke IP ESP8266)
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+
   server.on("/", handleRoot);
   server.on("/data", handleData);
   server.on("/set", handleSetRelay);
+  server.onNotFound(handleNotFound); // Menangani request redirect captive portal
   server.begin();
 }
 
 void loop() {
+  dnsServer.processNextRequest(); // Proses request DNS captive portal
   server.handleClient();
+  
   if (millis() - lastDHTRead > 2000) {
     lastDHTRead = millis();
     float t = dht.readTemperature();

@@ -27,7 +27,7 @@ Project ini dibuat oleh **Anak Agung Duwi Arsana** dan dirancang khusus untuk di
 |------------------|--------------------------------------------------|
 | Microcontroller  | ESP8266 onboard                                  |
 | USB Interface    | CP2102 (untuk upload dan debugging)              |
-| Relay            | 2 channel onboard, aktif LOW, ada terminal screw |
+| Relay            | 2 channel onboard, aktif HIGH, ada terminal screw |
 | Sensor Suhu      | Konektor JST 3-pin untuk DHT11                   |
 | Input Power      | 5V dari USB Type-C atau konektor DC barrel       |
 
@@ -37,8 +37,8 @@ Project ini dibuat oleh **Anak Agung Duwi Arsana** dan dirancang khusus untuk di
 
 | Fungsi         | GPIO | Label di ESP8266 | Keterangan     |
 |----------------|------|------------------|----------------|
-| Relay 1        | 4    | D2               | Aktif LOW      |
-| Relay 2        | 5    | D1               | Aktif LOW      |
+| Relay 1        | 4    | D2               | Aktif HIGH     |
+| Relay 2        | 5    | D1               | Aktif HIGH     |
 | DHT11 (Data)   | 12   | D6               | Plug JST       |
 
 ---

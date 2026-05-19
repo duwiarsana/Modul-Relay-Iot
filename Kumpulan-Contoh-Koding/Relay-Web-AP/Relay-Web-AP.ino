@@ -1,21 +1,23 @@
-// Web Relay Control ESP8266
+// Web Relay Control AP ESP8266 (Captive Portal)
 // Dibuat oleh Duwi Arsana - Anak Agung Duwi Arsana
 // Website: https://duwiarsana.com
 // YouTube: https://youtube.com/@AnakAgungDuwiArsana
 
 #include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
-
-// Ganti dengan nama dan password WiFi kamu
-const char *ssid = "your-SSID";
-const char *password = "your-PASSWORD";
+#include <DNSServer.h>
 
 // Definisi pin relay
 #define RELAY1 4
 #define RELAY2 5
 
-// Objek web server pada port 80
+// Pengaturan Access Point (AP)
+const char* ap_ssid = "IoT-WiFi-Relay";
+const char* ap_password = ""; // Kosongkan jika ingin open network tanpa password
+
 AsyncWebServer server(80);
+DNSServer dnsServer;
+const byte DNS_PORT = 53;
 
 void setup() {
   Serial.begin(115200);
@@ -26,15 +28,18 @@ void setup() {
   digitalWrite(RELAY1, LOW);
   digitalWrite(RELAY2, LOW);
 
-  // Koneksi ke WiFi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\nWiFi connected!");
+  // Memulai mode Access Point (AP)
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ap_ssid, ap_password);
+
+  Serial.println("\nAccess Point Berhasil Dibuat!");
+  Serial.print("SSID: ");
+  Serial.println(ap_ssid);
   Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP()); // Tampilkan IP address ESP
+  Serial.println(WiFi.softAPIP());
+
+  // Memulai DNS Server untuk Captive Portal
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
 
   // Halaman utama (kontrol relay via browser)
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -176,7 +181,7 @@ void setup() {
   <header>
     <div class="logo-icon"><i class="fa-solid fa-toggle-on"></i></div>
     <h1>WiFi Relay Controller</h1>
-    <p class="subtitle">ESP8266 2-Channel Switch</p>
+    <p class="subtitle">ESP8266 2-Channel Switch (AP)</p>
   </header>
   <div class="card">
     <!-- Relay 1 Row -->
@@ -301,10 +306,15 @@ void setup() {
     request->send(200, "text/plain", "Relay 2 OFF");
   });
 
+  // Redirect all unknown requests to the AP root for Captive Portal functionality
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->redirect("http://192.168.4.1/");
+  });
+
   // Mulai server
   server.begin();
 }
 
 void loop() {
-  // Tidak ada proses di loop karena semua handled oleh web server async
+  dnsServer.processNextRequest();
 }

@@ -26,11 +26,11 @@ This is a simple 2-channel IoT relay module based on ESP8266, designed for smart
 
 ## 🧩 GPIO yang Digunakan
 
-| Fungsi       | GPIO ESP8266 |
-|--------------|---------------|
-| Relay 1      | GPIO 4 (D2)   |
-| Relay 2      | GPIO 5 (D1)   |
-| Sensor DHT11 | GPIO 14 (D5)  |
+| Fungsi       | GPIO ESP8266 | Keterangan |
+|--------------|--------------|------------|
+| Relay 1      | GPIO 4 (D2)  | Aktif HIGH |
+| Relay 2      | GPIO 5 (D1)  | Aktif HIGH |
+| Sensor DHT11 | GPIO 12 (D6) | Plug JST   |
 
 > Pastikan GPIO yang digunakan di sketch sesuai dengan pinout ini agar modul berjalan dengan benar.
 
@@ -41,7 +41,7 @@ This is a simple 2-channel IoT relay module based on ESP8266, designed for smart
 3. Buka Arduino IDE atau PlatformIO.
 4. Upload firmware sesuai kebutuhan kamu.
 
-Contoh firmware akan disediakan di folder `/Contoh coding`.
+Contoh firmware disediakan di folder [`/Kumpulan-Contoh-Koding`](Kumpulan-Contoh-Koding).
 
 ---
 
@@ -86,15 +86,46 @@ Kalau kamu suka dengan proyek ini dan ingin support agar saya bisa terus berkary
 
 ---
 
-## 📁 Folder `Kumpulan Contoh Koding`
+## 📁 Folder `Kumpulan-Contoh-Koding`
 
-Berisi beberapa sketch contoh yang bisa kamu langsung flash ke ESP8266 untuk:
-- Mengontrol relay via WiFi
-- Membaca data DHT11
-- Kombinasi relay + suhu
-- dan lainnya (akan terus bertambah)
+Folder ini berisi kumpulan contoh koding siap pakai yang bisa langsung di-flash ke modul:
 
----
+1. **[Relay-Web](Kumpulan-Contoh-Koding/Relay-Web)**
+   - Mode Client (konek ke WiFi rumah).
+   - Tampilan web control panel modern (Glassmorphism) untuk menghidupkan dan mematikan 2 relay secara nirkabel.
+   - Sinkronisasi status relay secara real-time pada halaman web saat pertama kali dimuat.
+
+2. **[Relay-Web-AP](Kumpulan-Contoh-Koding/Relay-Web-AP) (Baru! ⚡)**
+   - Mode Access Point (AP) dengan **Captive Portal**.
+   - ESP8266 memancarkan WiFi sendiri (`IoT-WiFi-Relay`).
+   - Begitu HP/PC tersambung ke WiFi tersebut, halaman kontrol web akan **otomatis muncul** tanpa perlu mengetik alamat IP secara manual.
+
+3. **[Monitoring-dan-Kontrol](Kumpulan-Contoh-Koding/Monitoring-dan-Kontrol)**
+   - Mode Client (konek ke WiFi rumah).
+   - Dilengkapi grafik tren suhu real-time (menggunakan Chart.js) dari sensor DHT11.
+   - Status switch relay otomatis kembali ke posisi semula jika koneksi terputus.
+
+4. **[Monitoring-dan-Kontrol-AP](Kumpulan-Contoh-Koding/Monitoring-dan-Kontrol-AP) (Baru! ⚡)**
+   - Mode Access Point (AP) dengan **Captive Portal** + sensor suhu DHT11.
+   - ESP8266 memancarkan WiFi (`IoT-Smart-Relay`).
+   - Menampilkan kontrol relay interaktif dan grafik suhu secara offline (langsung konek HP ke modul).
+
+5. **[Timer-Relay](Kumpulan-Contoh-Koding/Timer-Relay)**
+   - Mode Client (konek ke WiFi rumah untuk sinkronisasi waktu NTP).
+   - Panel penjadwalan waktu (ON/OFF) otomatis berbasis jam digital real-time untuk masing-masing relay.
+   - Dilengkapi sistem proteksi agar aman dari error saat EEPROM kosong.
+
+6. **[Smart-Thermostat](Kumpulan-Contoh-Koding/Smart-Thermostat) (Baru! ⚡)**
+   - Mengubah modul menjadi pengatur suhu otomatis (Klimatisasi).
+   - Relay 1 sebagai pendingin (Cooler/Kipas), Relay 2 sebagai pemanas (Heater).
+   - Menggunakan dial melingkar (*circular thermostat gauge*) yang interaktif untuk menyetel target suhu dan histeresis.
+   - Dilengkapi dengan 4 mode operasi: **Auto**, **Manual Cool**, **Manual Heat**, dan **System Off**.
+
+7. **[Telegram-Bot](Kumpulan-Contoh-Koding/Telegram-Bot) (Baru! ⚡)**
+   - Mengontrol 2 relay dan membaca sensor DHT11 langsung lewat chat Telegram Bot.
+   - Token Bot Telegram dan Chat ID dapat diubah dan disimpan langsung dari halaman web modul secara asinkron.
+   - Dilengkapi dengan fitur **Alarm Notifikasi Suhu Otomatis** ke HP Anda jika mendeteksi suhu melebihi ambang batas aman.
+   - Tanpa library eksternal Telegram pihak ketiga (koneksi HTTPS super ringan & anti-fingerprint-expired).
 
 ## 📄 Lisensi
 
