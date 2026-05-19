@@ -670,8 +670,8 @@ void handleSetRelay() {
   if (server.hasArg("relay") && server.hasArg("state")) {
     int id = server.arg("relay").toInt();
     int state = server.arg("state").toInt();
-    if (id == 1) { relay1 = (state == 1); }
-    if (id == 2) { relay2 = (state == 1); }
+    if (id == 1) { relay1 = (state == 1); digitalWrite(RELAY1_PIN, relay1 ? HIGH : LOW); }
+    if (id == 2) { relay2 = (state == 1); digitalWrite(RELAY2_PIN, relay2 ? HIGH : LOW); }
     saveRelayState();
   }
   server.send(200, "text/plain", "OK");
