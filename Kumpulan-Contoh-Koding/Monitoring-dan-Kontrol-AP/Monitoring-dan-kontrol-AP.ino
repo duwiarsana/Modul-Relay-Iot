@@ -5,12 +5,11 @@
 #include <ESP8266WebServer.h>
 #include <DNSServer.h>
 #include <DHT.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include <EEPROM.h>
 
 #define DHTPIN 12
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
-
 #define RELAY1_PIN 4
 #define RELAY2_PIN 5
 
@@ -22,27 +21,70 @@ ESP8266WebServer server(80);
 DNSServer dnsServer;
 const byte DNS_PORT = 53;
 
+struct ModulConfig {
+  bool relay1;
+  bool relay2;
+  byte sensorType; // 0 = DHT11, 1 = DHT22, 2 = DS18B20
+};
+
+ModulConfig config;
 bool relay1 = false;
 bool relay2 = false;
 float suhu = 0;
-
 unsigned long lastDHTRead = 0;
 
+DHT* dht = nullptr;
+OneWire* oneWire = nullptr;
+DallasTemperature* sensors = nullptr;
+
+void initSensor() {
+  if (dht != nullptr) { delete dht; dht = nullptr; }
+  if (sensors != nullptr) { delete sensors; sensors = nullptr; }
+  if (oneWire != nullptr) { delete oneWire; oneWire = nullptr; }
+
+  if (config.sensorType == 0) {
+    dht = new DHT(DHTPIN, DHT11);
+    dht->begin();
+    Serial.println("Sensor Inited: DHT11");
+  } else if (config.sensorType == 1) {
+    dht = new DHT(DHTPIN, DHT22);
+    dht->begin();
+    Serial.println("Sensor Inited: DHT22");
+  } else if (config.sensorType == 2) {
+    oneWire = new OneWire(DHTPIN);
+    sensors = new DallasTemperature(oneWire);
+    sensors->begin();
+    Serial.println("Sensor Inited: DS18B20");
+  }
+}
+
 void saveRelayState() {
-  EEPROM.write(0, relay1);
-  EEPROM.write(1, relay2);
+  config.relay1 = relay1;
+  config.relay2 = relay2;
+  EEPROM.put(0, config);
   EEPROM.commit();
 }
 
-void loadRelayState() {
-  relay1 = (EEPROM.read(0) == 1);
-  relay2 = (EEPROM.read(1) == 1);
+void loadConfig() {
+  EEPROM.get(0, config);
+  // Validasi default jika EEPROM kosong
+  if (config.sensorType > 2) {
+    config.sensorType = 0; // Default DHT11
+  }
+  if (config.relay1 != 0 && config.relay1 != 1) config.relay1 = false;
+  if (config.relay2 != 0 && config.relay2 != 1) config.relay2 = false;
+  
+  relay1 = config.relay1;
+  relay2 = config.relay2;
+  
   digitalWrite(RELAY1_PIN, relay1 ? HIGH : LOW);
   digitalWrite(RELAY2_PIN, relay2 ? HIGH : LOW);
+  
+  Serial.print("Loaded sensor: "); Serial.println(config.sensorType);
 }
 
-void handleRoot() {
-  String html = R"rawliteral(
+// HTML & CSS Template disimpan di Flash Memory (PROGMEM)
+const char html_template[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -52,7 +94,7 @@ void handleRoot() {
   <!-- Google Fonts & FontAwesome -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Chart.js CDN -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <style>
@@ -65,6 +107,9 @@ void handleRoot() {
       --primary: #00f2fe;
       --secondary: #4facfe;
       --success: #10b981;
+      --success-glow: rgba(16, 185, 129, 0.2);
+      --danger: #ef4444;
+      --danger-glow: rgba(239, 68, 68, 0.2);
     }
 
     * {
@@ -81,44 +126,40 @@ void handleRoot() {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       padding: 20px;
-      position: relative;
       overflow-x: hidden;
+      position: relative;
     }
 
-    /* Background Ambient Glows */
+    /* Ambient Background Glows */
+    body::before, body::after {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: -1;
+      opacity: 0.35;
+    }
     body::before {
-      content: '';
-      position: absolute;
-      width: 300px;
-      height: 300px;
       background: var(--primary);
-      border-radius: 50%;
-      filter: blur(120px);
-      z-index: -1;
-      opacity: 0.25;
-      top: 10%;
-      left: 10%;
+      top: 15%;
+      left: -10%;
     }
-
     body::after {
-      content: '';
-      position: absolute;
-      width: 300px;
-      height: 300px;
-      background: #8b5cf6;
-      border-radius: 50%;
-      filter: blur(120px);
-      z-index: -1;
-      opacity: 0.25;
-      bottom: 10%;
-      right: 10%;
+      background: var(--secondary);
+      bottom: 15%;
+      right: -10%;
     }
 
     .container {
       width: 100%;
-      max-width: 480px;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
       z-index: 1;
     }
 
@@ -127,7 +168,7 @@ void handleRoot() {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
+      padding: 10px 0;
     }
 
     .logo-area {
@@ -138,13 +179,13 @@ void handleRoot() {
 
     .logo-icon {
       background: linear-gradient(135deg, var(--secondary), var(--primary));
-      width: 46px;
-      height: 46px;
+      width: 44px;
+      height: 44px;
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 20px rgba(0, 242, 254, 0.35);
+      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
     }
 
     .logo-icon i {
@@ -153,34 +194,27 @@ void handleRoot() {
     }
 
     .logo-title h1 {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       letter-spacing: -0.5px;
-      background: linear-gradient(to right, #ffffff, #c7d2fe);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
     }
 
     .logo-title p {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--text-sub);
     }
 
     .status-badge {
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 6px 12px;
-      border-radius: 20px;
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-
-    .status-badge span {
+      gap: 6px;
       font-size: 10px;
       font-weight: 700;
       color: var(--success);
-      letter-spacing: 0.5px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      padding: 6px 12px;
+      border-radius: 20px;
     }
 
     .pulse-dot {
@@ -189,7 +223,7 @@ void handleRoot() {
       background-color: var(--success);
       border-radius: 50%;
       box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
-      animation: pulse 1.6s infinite;
+      animation: pulse 1.5s infinite;
     }
 
     @keyframes pulse {
@@ -207,74 +241,53 @@ void handleRoot() {
       }
     }
 
-    /* Cards Grid */
+    /* Grid Layout */
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
-      margin-bottom: 20px;
     }
 
+    /* Card */
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       border-radius: 20px;
       padding: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
     }
 
     .card.active {
-      border-color: rgba(0, 242, 254, 0.4);
-      box-shadow: 0 8px 32px rgba(0, 242, 254, 0.15);
-    }
-
-    .card.active::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 4px;
-      background: linear-gradient(to right, var(--secondary), var(--primary));
+      border-color: rgba(0, 242, 254, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 242, 254, 0.08);
     }
 
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
     }
 
     .card-title {
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text-main);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
-    .card-title i {
-      font-size: 16px;
-      color: var(--text-sub);
-      transition: color 0.3s;
-    }
-
-    .card.active .card-title i {
-      color: var(--primary);
-    }
-
-    /* Switch Style */
+    /* Toggle Switch */
     .switch {
       position: relative;
       display: inline-block;
-      width: 44px;
-      height: 24px;
+      width: 40px;
+      height: 22px;
     }
 
     .switch input {
@@ -292,14 +305,14 @@ void handleRoot() {
       bottom: 0;
       background-color: #374151;
       transition: .3s;
-      border-radius: 24px;
+      border-radius: 22px;
     }
 
     .slider:before {
       position: absolute;
       content: "";
-      height: 16px;
-      width: 16px;
+      height: 14px;
+      width: 14px;
       left: 4px;
       bottom: 4px;
       background-color: #9ca3af;
@@ -312,45 +325,43 @@ void handleRoot() {
     }
 
     input:checked + .slider:before {
-      transform: translateX(20px);
+      transform: translateX(18px);
       background-color: #0b0f19;
     }
 
     .state-label {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 800;
       color: var(--text-sub);
-      letter-spacing: -0.5px;
-      transition: color 0.3s;
+      margin-top: 4px;
     }
 
     .state-label.active {
       color: #fff;
-      text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+      text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
     }
 
-    /* Temp Widget styles */
+    /* Temp Widget */
     .temp-info {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      margin-bottom: 15px;
     }
 
     .temp-value {
-      font-size: 34px;
+      font-size: 40px;
       font-weight: 800;
-      letter-spacing: -1px;
       color: #fff;
       display: flex;
       align-items: baseline;
+      line-height: 1;
     }
 
     .temp-unit {
-      font-size: 18px;
+      font-size: 20px;
       color: var(--text-sub);
-      margin-left: 2px;
       font-weight: 500;
+      margin-left: 2px;
     }
 
     /* Chart Card */
@@ -358,36 +369,40 @@ void handleRoot() {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       border-radius: 20px;
       padding: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-      margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     }
 
     .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 15px;
     }
 
     .chart-title {
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
     .chart-title i {
-      color: var(--primary);
+      color: #8b5cf6;
     }
 
     /* Footer */
     footer {
       text-align: center;
-      font-size: 11px;
+      padding: 15px 0;
       color: var(--text-sub);
-      padding: 10px 0;
+      font-size: 12px;
+      width: 100%;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
+      margin-top: auto;
     }
 
     footer a {
@@ -452,14 +467,14 @@ void handleRoot() {
   <div class="grid">
     <div class="card" style="grid-column: span 2;">
       <div class="temp-info">
-        <span class="card-title" style="color: var(--text-sub);"><i class="fa-solid fa-thermometer-half" style="color: #ef4444;"></i> Sensor DHT11</span>
+        <span class="card-title" style="color: var(--text-sub);"><i class="fa-solid fa-thermometer-half" style="color: #ef4444;"></i> <span id="lblSensor">Sensor</span></span>
         <span style="font-size: 12px; color: var(--text-sub);">Real-time Telemetry</span>
       </div>
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <div>
           <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 2px;">SUHU RUANGAN</p>
           <div class="temp-value">
-            <span id="temp">0</span>
+            <span id="temp">0.0</span>
             <span class="temp-unit">°C</span>
           </div>
         </div>
@@ -467,6 +482,18 @@ void handleRoot() {
           <i class="fa-solid fa-fire-flame-simple" style="font-size: 28px; color: #ef4444;"></i>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Sensor Selector Card -->
+  <div class="grid">
+    <div class="card" style="grid-column: span 2; display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 12px 20px;">
+      <span class="card-title" style="font-size: 13px; color: var(--text-sub); display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-gears" style="color: var(--primary);"></i> Jenis Sensor (GPIO 12)</span>
+      <select id="sensorTypeSelect" onchange="changeSensor(this.value)" style="background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.08); color: #fff; border-radius: 8px; padding: 6px 12px; outline: none; font-size: 12px; font-weight: 600; cursor: pointer; color-scheme: dark;">
+        <option value="0">DHT11</option>
+        <option value="1">DHT22</option>
+        <option value="2">DS18B20</option>
+      </select>
     </div>
   </div>
 
@@ -496,7 +523,6 @@ void handleRoot() {
 
   const ctx = document.getElementById("chart").getContext("2d");
   
-  // Custom styled Chart.js configuration
   const chart = new Chart(ctx, {
     type: "line",
     data: {
@@ -518,29 +544,21 @@ void handleRoot() {
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: { display: false }
-      },
+      plugins: { legend: { display: false } },
       scales: {
-        x: {
-          grid: { display: false },
-          ticks: { color: "#6b7280", font: { size: 10 } }
-        },
-        y: {
-          grid: { color: "rgba(255,255,255,0.03)" },
-          ticks: { color: "#6b7280", font: { size: 10 } }
-        }
+        x: { grid: { color: "rgba(255, 255, 255, 0.03)" }, ticks: { color: "#9ca3af", font: { size: 10 } } },
+        y: { grid: { color: "rgba(255, 255, 255, 0.03)" }, ticks: { color: "#9ca3af", font: { size: 10 } } }
       }
     }
   });
 
-  function updateRelayUI(id, isActive) {
-    const sw = id === 1 ? r1Switch : r2Switch;
-    const txt = id === 1 ? r1Text : r2Text;
-    const card = id === 1 ? r1Card : r2Card;
+  function updateRelayUI(id, isON) {
+    const sw = (id === 1) ? r1Switch : r2Switch;
+    const txt = (id === 1) ? r1Text : r2Text;
+    const card = (id === 1) ? r1Card : r2Card;
 
-    sw.checked = isActive;
-    if (isActive) {
+    sw.checked = isON;
+    if (isON) {
       txt.innerText = "ON";
       txt.className = "state-label active";
       card.classList.add("active");
@@ -553,10 +571,15 @@ void handleRoot() {
 
   function fetchData() {
     fetch('/data').then(res => res.json()).then(data => {
-      tempSpan.innerText = data.temp;
+      tempSpan.innerText = data.temp.toFixed(1);
       
       updateRelayUI(1, data.r1);
       updateRelayUI(2, data.r2);
+
+      // Update sensor label
+      const sensorNames = ["Sensor DHT11", "Sensor DHT22", "Sensor DS18B20"];
+      document.getElementById("lblSensor").innerText = sensorNames[data.sensor];
+      document.getElementById("sensorTypeSelect").value = data.sensor;
 
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       timeLabels.push(now);
@@ -580,10 +603,19 @@ void handleRoot() {
       })
       .catch(err => {
         console.error("Error setting relay:", err);
-        // Revert switch if failed
         if(id === 1) r1Switch.checked = !isChecked;
         if(id === 2) r2Switch.checked = !isChecked;
       });
+  }
+
+  function changeSensor(type) {
+    fetch('/setsensor?type=' + type)
+      .then(res => {
+        if(res.ok) {
+          fetchData();
+        }
+      })
+      .catch(err => console.error("Error setting sensor:", err));
   }
 
   setInterval(fetchData, 2000);
@@ -592,14 +624,17 @@ void handleRoot() {
 </body>
 </html>
 )rawliteral";
-  server.send(200, "text/html", html);
+
+void handleRoot() {
+  server.send_P(200, "text/html", html_template);
 }
 
 void handleData() {
   String json = "{";
   json += "\"temp\":" + String(suhu) + ",";
   json += "\"r1\":" + String(relay1 ? "true" : "false") + ",";
-  json += "\"r2\":" + String(relay2 ? "true" : "false");
+  json += "\"r2\":" + String(relay2 ? "true" : "false") + ",";
+  json += "\"sensor\":" + String(config.sensorType);
   json += "}";
   server.send(200, "application/json", json);
 }
@@ -608,15 +643,23 @@ void handleSetRelay() {
   if (server.hasArg("relay") && server.hasArg("state")) {
     int id = server.arg("relay").toInt();
     int state = server.arg("state").toInt();
-    if (id == 1) { relay1 = (state == 1); digitalWrite(RELAY1_PIN, relay1 ? HIGH : LOW); }
-    if (id == 2) { relay2 = (state == 1); digitalWrite(RELAY2_PIN, relay2 ? HIGH : LOW); }
+    if (id == 1) { relay1 = (state == 1); }
+    if (id == 2) { relay2 = (state == 1); }
     saveRelayState();
   }
   server.send(200, "text/plain", "OK");
 }
 
+void handleSetSensor() {
+  if (server.hasArg("type")) {
+    config.sensorType = server.arg("type").toInt();
+    saveRelayState();
+    initSensor();
+  }
+  server.send(200, "text/plain", "OK");
+}
+
 void handleNotFound() {
-  // Redirect ke root (Captive Portal)
   server.sendHeader("Location", "http://192.168.4.1/", true);
   server.send(302, "text/plain", "");
 }
@@ -624,40 +667,42 @@ void handleNotFound() {
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
-
+  
   pinMode(RELAY1_PIN, OUTPUT);
   pinMode(RELAY2_PIN, OUTPUT);
-  loadRelayState();
+  
+  loadConfig();
+  initSensor();
 
-  dht.begin();
-
-  // Memulai mode Access Point (AP)
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ap_ssid, ap_password);
 
-  Serial.println("\nAccess Point Berhasil Dibuat!");
-  Serial.print("SSID: ");
-  Serial.println(ap_ssid);
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.softAPIP());
-
-  // Memulai DNS Server untuk Captive Portal (mengarahkan semua domain ke IP ESP8266)
   dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
 
   server.on("/", handleRoot);
   server.on("/data", handleData);
   server.on("/set", handleSetRelay);
-  server.onNotFound(handleNotFound); // Menangani request redirect captive portal
+  server.on("/setsensor", handleSetSensor);
+  server.onNotFound(handleNotFound);
   server.begin();
 }
 
 void loop() {
-  dnsServer.processNextRequest(); // Proses request DNS captive portal
+  dnsServer.processNextRequest();
   server.handleClient();
-  
   if (millis() - lastDHTRead > 2000) {
     lastDHTRead = millis();
-    float t = dht.readTemperature();
-    if (!isnan(t)) suhu = t;
+    if (config.sensorType == 0 || config.sensorType == 1) {
+      if (dht != nullptr) {
+        float t = dht->readTemperature();
+        if (!isnan(t)) suhu = t;
+      }
+    } else if (config.sensorType == 2) {
+      if (sensors != nullptr) {
+        sensors->requestTemperatures();
+        float t = sensors->getTempCByIndex(0);
+        if (t != DEVICE_DISCONNECTED_C) suhu = t;
+      }
+    }
   }
 }

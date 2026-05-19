@@ -6,6 +6,8 @@
 #include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <DHT.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include <EEPROM.h>
 
 // WiFi credentials (ubah sesuai dengan WiFi Anda)
@@ -14,16 +16,13 @@ const char* password = "your-PASSWORD";
 
 #define RELAY_COOLER 4 // Relay 1 (Cooler / Exhaust fan)
 #define RELAY_HEATER 5 // Relay 2 (Heater / Pemanas)
-#define DHTPIN 12      // Sensor DHT11
-#define DHTTYPE DHT11
-
-DHT dht(DHTPIN, DHTTYPE);
-AsyncWebServer server(80);
+#define DHTPIN 12      // Sensor Pin
 
 struct ThermostatSetting {
   float targetTemp;
   float hysteresis;
   int mode; // 0: Auto, 1: Manual Cooler, 2: Manual Heater, 3: Off
+  int sensorType; // 0: DHT11, 1: DHT22, 2: DS18B20
 };
 
 ThermostatSetting settings;
@@ -32,6 +31,31 @@ float currentHumidity = 0.0;
 bool coolerActive = false;
 bool heaterActive = false;
 unsigned long lastDHTRead = 0;
+
+DHT* dht = nullptr;
+OneWire* oneWire = nullptr;
+DallasTemperature* sensors = nullptr;
+
+void initSensor() {
+  if (dht != nullptr) { delete dht; dht = nullptr; }
+  if (sensors != nullptr) { delete sensors; sensors = nullptr; }
+  if (oneWire != nullptr) { delete oneWire; oneWire = nullptr; }
+
+  if (settings.sensorType == 0) {
+    dht = new DHT(DHTPIN, DHT11);
+    dht->begin();
+    Serial.println("Sensor Inited: DHT11");
+  } else if (settings.sensorType == 1) {
+    dht = new DHT(DHTPIN, DHT22);
+    dht->begin();
+    Serial.println("Sensor Inited: DHT22");
+  } else if (settings.sensorType == 2) {
+    oneWire = new OneWire(DHTPIN);
+    sensors = new DallasTemperature(oneWire);
+    sensors->begin();
+    Serial.println("Sensor Inited: DS18B20");
+  }
+}
 
 void saveSettings() {
   Serial.println("Saving settings...");
@@ -43,7 +67,7 @@ void loadSettings() {
   Serial.println("Loading settings...");
   EEPROM.get(0, settings);
   
-  // Validasi jika EEPROM kosong atau bernilai acak (NaN atau out of range)
+  // Validasi jika EEPROM kosong atau bernilai acak
   if (isnan(settings.targetTemp) || settings.targetTemp < 10.0f || settings.targetTemp > 45.0f) {
     settings.targetTemp = 26.0f;
   }
@@ -53,10 +77,14 @@ void loadSettings() {
   if (settings.mode < 0 || settings.mode > 3) {
     settings.mode = 0; // Default: AUTO
   }
+  if (settings.sensorType < 0 || settings.sensorType > 2) {
+    settings.sensorType = 0; // Default: DHT11
+  }
   
   Serial.print("Target Temp: "); Serial.println(settings.targetTemp);
   Serial.print("Hysteresis: "); Serial.println(settings.hysteresis);
   Serial.print("Mode: "); Serial.println(settings.mode);
+  Serial.print("Sensor Type: "); Serial.println(settings.sensorType);
 }
 
 // HTML & CSS Template disimpan di Flash Memory (PROGMEM) untuk efisiensi RAM
@@ -105,42 +133,33 @@ const char html_template[] PROGMEM = R"rawliteral(
       overflow-x: hidden;
     }
 
-    /* Ambient Background Glows */
-    body::before {
+    body::before, body::after {
       content: '';
       position: absolute;
       width: 300px;
       height: 300px;
-      background: var(--primary);
       border-radius: 50%;
       filter: blur(120px);
       z-index: -1;
       opacity: 0.2;
+    }
+    body::before {
+      background: var(--primary);
       top: 10%;
       left: 10%;
     }
-
     body::after {
-      content: '';
-      position: absolute;
-      width: 300px;
-      height: 300px;
       background: #8b5cf6;
-      border-radius: 50%;
-      filter: blur(120px);
-      z-index: -1;
-      opacity: 0.2;
       bottom: 10%;
       right: 10%;
     }
 
     .container {
       width: 100%;
-      max-width: 450px;
+      max-width: 440px;
       z-index: 1;
     }
 
-    /* Header */
     header {
       display: flex;
       justify-content: space-between;
@@ -155,7 +174,7 @@ const char html_template[] PROGMEM = R"rawliteral(
     }
 
     .logo-icon {
-      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      background: linear-gradient(135deg, #8b5cf6, var(--primary));
       width: 44px;
       height: 44px;
       border-radius: 12px;
@@ -172,7 +191,7 @@ const char html_template[] PROGMEM = R"rawliteral(
 
     .logo-title h1 {
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 750;
       letter-spacing: -0.5px;
     }
 
@@ -182,85 +201,82 @@ const char html_template[] PROGMEM = R"rawliteral(
     }
 
     .sys-status {
-      font-size: 11px;
-      font-weight: 700;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.03);
-      text-transform: uppercase;
+      font-size: 10px;
+      font-weight: 800;
       letter-spacing: 0.5px;
+      text-transform: uppercase;
       transition: all 0.3s ease;
     }
 
-    .sys-status.cooling {
-      color: var(--primary);
-      border-color: rgba(0, 242, 254, 0.2);
+    .standby {
+      background: rgba(156, 163, 175, 0.08);
+      border: 1px solid rgba(156, 163, 175, 0.2);
+      color: var(--text-sub);
+    }
+
+    .cooling {
       background: rgba(0, 242, 254, 0.08);
-      box-shadow: 0 0 15px rgba(0, 242, 254, 0.15);
+      border: 1px solid rgba(0, 242, 254, 0.25);
+      color: var(--primary);
+      text-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
     }
 
-    .sys-status.heating {
-      color: var(--accent-red);
-      border-color: rgba(255, 94, 98, 0.2);
+    .heating {
       background: rgba(255, 94, 98, 0.08);
-      box-shadow: 0 0 15px rgba(255, 94, 98, 0.15);
+      border: 1px solid rgba(255, 94, 98, 0.25);
+      color: var(--accent-red);
+      text-shadow: 0 0 8px rgba(255, 94, 98, 0.3);
     }
 
-    .sys-status.standby {
-      color: #10b981;
-      border-color: rgba(16, 185, 129, 0.2);
-      background: rgba(16, 185, 129, 0.08);
-    }
-
-    /* Dial Gauge Card */
+    /* Circular Dial */
     .dial-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       backdrop-filter: blur(16px);
       border-radius: 24px;
-      padding: 30px 20px;
-      text-align: center;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-      margin-bottom: 20px;
-      position: relative;
-      overflow: hidden;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      margin-bottom: 16px;
     }
 
     .dial-container {
       position: relative;
       width: 200px;
       height: 200px;
-      margin: 0 auto 20px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .dial-svg {
       width: 100%;
       height: 100%;
+      transform: rotate(0deg);
     }
 
     .dial-track {
-      stroke: rgba(255, 255, 255, 0.04);
+      stroke: rgba(255, 255, 255, 0.03);
     }
 
     .dial-progress {
-      transition: stroke-dashoffset 0.6s ease;
+      transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .dial-content {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      width: 100%;
+      text-align: center;
     }
 
     .dial-label {
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
       color: var(--text-sub);
       letter-spacing: 1px;
@@ -269,9 +285,8 @@ const char html_template[] PROGMEM = R"rawliteral(
     }
 
     .dial-value {
-      font-size: 48px;
+      font-size: 38px;
       font-weight: 800;
-      letter-spacing: -1px;
       color: #fff;
       display: flex;
       align-items: baseline;
@@ -279,165 +294,115 @@ const char html_template[] PROGMEM = R"rawliteral(
     }
 
     .dial-unit {
-      font-size: 20px;
+      font-size: 18px;
       color: var(--text-sub);
       font-weight: 500;
-      margin-left: 2px;
+      margin-left: 1px;
     }
 
     .dial-target {
-      font-size: 13px;
+      font-size: 11px;
       color: var(--text-sub);
-      margin-top: 6px;
-      font-weight: 500;
+      margin-top: 4px;
+      font-weight: 600;
     }
 
-    .dial-target span {
-      color: #fff;
-      font-weight: 700;
-    }
-
-    /* Telemetry grid */
+    /* Grid Layout */
     .tele-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 20px;
+      gap: 12px;
+      margin-bottom: 16px;
     }
 
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
       border-radius: 20px;
-      padding: 16px 20px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+      padding: 16px;
       display: flex;
-      align-items: center;
       justify-content: space-between;
-    }
-
-    .card-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
+      align-items: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .card-info span {
-      font-size: 11px;
+      font-size: 9px;
+      font-weight: 700;
       color: var(--text-sub);
-      font-weight: 600;
+      letter-spacing: 0.5px;
       text-transform: uppercase;
     }
 
     .card-info p {
-      font-size: 18px;
-      font-weight: 700;
+      font-size: 16px;
+      font-weight: 750;
       color: #fff;
+      margin-top: 2px;
     }
 
     .card-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.03);
+      width: 38px;
+      height: 38px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 16px;
       color: var(--text-sub);
-      transition: all 0.3s ease;
-      border: 1px solid rgba(255, 255, 255, 0.02);
+      transition: all 0.4s ease;
     }
 
-    .card.active-cooler .card-icon {
+    /* Active Glowing Classes */
+    .active-cooler {
+      border-color: rgba(0, 242, 254, 0.3);
+      box-shadow: 0 8px 25px var(--accent-blue-glow);
+    }
+    .active-cooler .card-icon {
       background: rgba(0, 242, 254, 0.1);
       color: var(--primary);
-      box-shadow: 0 0 15px var(--accent-blue-glow);
       border-color: rgba(0, 242, 254, 0.2);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
     }
-
-    .card.active-heater .card-icon {
-      background: rgba(255, 94, 98, 0.1);
-      color: var(--accent-red);
-      box-shadow: 0 0 15px var(--accent-red-glow);
-      border-color: rgba(255, 94, 98, 0.2);
-    }
-
-    /* Mode selector */
-    .mode-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      backdrop-filter: blur(12px);
-      border-radius: 20px;
-      padding: 20px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-      margin-bottom: 20px;
-    }
-
-    .mode-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-sub);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .mode-title i {
+    .active-cooler p {
       color: var(--primary);
     }
 
-    .mode-buttons {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      background: rgba(0, 0, 0, 0.2);
-      padding: 4px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.03);
+    .active-heater {
+      border-color: rgba(255, 94, 98, 0.3);
+      box-shadow: 0 8px 25px var(--accent-red-glow);
+    }
+    .active-heater .card-icon {
+      background: rgba(255, 94, 98, 0.1);
+      color: var(--accent-red);
+      border-color: rgba(255, 94, 98, 0.2);
+      box-shadow: 0 0 10px rgba(255, 94, 98, 0.2);
+    }
+    .active-heater p {
+      color: var(--accent-red);
     }
 
-    .btn-mode {
-      background: transparent;
-      border: none;
-      color: var(--text-sub);
-      padding: 10px 5px;
-      font-size: 11px;
-      font-weight: 700;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-    }
-
-    .btn-mode.active {
-      background: linear-gradient(135deg, var(--secondary), var(--primary));
-      color: #080b13;
-      box-shadow: 0 4px 12px rgba(0, 242, 254, 0.25);
-    }
-
-    /* Adjusters Card */
+    /* Adjusters & Controls */
     .settings-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 20px;
+      gap: 12px;
+      margin-bottom: 16px;
     }
 
     .adjuster-card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      backdrop-filter: blur(12px);
       border-radius: 20px;
-      padding: 16px 20px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      align-items: center;
+      gap: 8px;
     }
 
     .adjuster-title {
@@ -451,44 +416,98 @@ const char html_template[] PROGMEM = R"rawliteral(
     .adjuster-controls {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      background: rgba(0, 0, 0, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      border-radius: 10px;
-      padding: 4px;
+      gap: 14px;
     }
 
     .btn-adj {
       width: 32px;
       height: 32px;
-      border-radius: 8px;
-      border: none;
-      background: rgba(255,255,255,0.04);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
       color: #fff;
-      font-size: 14px;
+      font-size: 12px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s ease;
+      transition: all 0.2s;
     }
 
     .btn-adj:hover {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.08);
+      transform: scale(1.05);
     }
 
     .btn-adj:active {
-      transform: scale(0.9);
+      transform: scale(0.95);
     }
 
     .adj-value {
       font-size: 18px;
-      font-weight: 800;
+      font-weight: 750;
       color: #fff;
-      font-variant-numeric: tabular-nums;
+      min-width: 44px;
+      text-align: center;
     }
 
-    /* Toast Notification */
+    /* Mode Selector Card */
+    .mode-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .mode-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mode-title i {
+      color: var(--primary);
+    }
+
+    .mode-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .btn-mode {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 10px 0;
+      color: var(--text-sub);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+    }
+
+    .btn-mode:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+    }
+
+    .btn-mode.active {
+      background: linear-gradient(135deg, var(--secondary), var(--primary));
+      color: #080b13;
+      border: none;
+      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25);
+    }
+
+    /* Toast */
     #toast {
       position: fixed;
       bottom: 20px;
@@ -506,7 +525,7 @@ const char html_template[] PROGMEM = R"rawliteral(
       gap: 8px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
       transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      z-index: 999;
+      z-index: 99;
     }
 
     #toast.show {
@@ -517,33 +536,31 @@ const char html_template[] PROGMEM = R"rawliteral(
       text-align: center;
       font-size: 11px;
       color: var(--text-sub);
+      padding-top: 16px;
     }
 
     footer a {
       color: var(--primary);
       text-decoration: none;
-      font-weight: 500;
+      font-weight: 550;
     }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- Header -->
   <header>
     <div class="logo-area">
-      <div class="logo-icon">
-        <i class="fa-solid fa-temperature-half"></i>
-      </div>
+      <div class="logo-icon"><i class="fa-solid fa-temperature-empty"></i></div>
       <div class="logo-title">
         <h1>Smart Thermostat</h1>
-        <p>IoT Climate Control</p>
+        <p>Climate Control System</p>
       </div>
     </div>
-    <div id="statusBadge" class="sys-status standby">STANDBY</div>
+    <div class="sys-status standby" id="statusBadge">STANDBY</div>
   </header>
 
-  <!-- Dial Card -->
+  <!-- Circular Thermostat Dial -->
   <div class="dial-card">
     <div class="dial-container">
       <svg class="dial-svg" viewBox="0 0 100 100">
@@ -569,7 +586,7 @@ const char html_template[] PROGMEM = R"rawliteral(
   <!-- Telemetry Row -->
   <div class="tele-grid">
     <!-- Humidity Card -->
-    <div class="card">
+    <div class="card" id="cardHumi">
       <div class="card-info">
         <span>KELEMBABAN</span>
         <p><span id="currHumi">--</span>%</p>
@@ -630,6 +647,16 @@ const char html_template[] PROGMEM = R"rawliteral(
     </div>
   </div>
 
+  <!-- Sensor Selector -->
+  <div class="mode-card" style="margin-top: 16px; display: flex; flex-direction: row; justify-content: space-between; align-items: center; padding: 15px 20px;">
+    <div class="mode-title" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;"><i class="fa-solid fa-microchip"></i> Jenis Sensor (GPIO 12)</div>
+    <select id="sensorTypeSelect" onchange="setSensor(this.value)" style="background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.08); color: #fff; border-radius: 8px; padding: 8px 16px; outline: none; font-size: 13px; font-weight: 600; cursor: pointer; color-scheme: dark;">
+      <option value="0">DHT11</option>
+      <option value="1">DHT22</option>
+      <option value="2">DS18B20</option>
+    </select>
+  </div>
+
   <!-- Footer -->
   <footer>
     Dibuat oleh <a href="https://duwiarsana.com" target="_blank">Duwi Arsana</a>
@@ -648,13 +675,14 @@ const char html_template[] PROGMEM = R"rawliteral(
   const strokeDash = 251.2; // 2 * pi * r = 2 * 3.14 * 40
 
   function updateDial(tempVal) {
-    const minTemp = 15.0;
-    const maxTemp = 40.0;
+    // Normalisasi visual dial dari range 15°C sampai 38°C
+    const minTemp = 15;
+    const maxTemp = 38;
+    let percent = (tempVal - minTemp) / (maxTemp - minTemp);
+    if (percent < 0) percent = 0;
+    if (percent > 1) percent = 1;
     
-    // Batasi nilai temperatur untuk dial
-    let val = Math.max(minTemp, Math.min(maxTemp, tempVal));
-    let pct = (val - minTemp) / (maxTemp - minTemp);
-    let offset = strokeDash - (strokeDash * pct);
+    const offset = strokeDash - (percent * strokeDash);
     progressCircle.style.strokeDashoffset = offset;
   }
 
@@ -664,25 +692,32 @@ const char html_template[] PROGMEM = R"rawliteral(
       .then(data => {
         // Update Telemetry
         document.getElementById("currTemp").innerText = data.temp.toFixed(1);
-        document.getElementById("currHumi").innerText = Math.round(data.humi);
-        document.getElementById("targetVal").innerText = data.target.toFixed(1);
-        
-        // Update Adjusters UI (jika sedang tidak diedit)
-        if (!saveTimeout) {
-          targetTemp = data.target;
-          hysteresis = data.hyst;
-          document.getElementById("adjTarget").innerText = targetTemp.toFixed(1);
-          document.getElementById("adjHyst").innerText = hysteresis.toFixed(1);
-        }
-
         updateDial(data.temp);
 
-        // Update Relays
+        // Handle sensor label and humidity widget opacity
+        document.getElementById("sensorTypeSelect").value = data.sensor;
+        const cardHumi = document.getElementById("cardHumi");
+        if (data.sensor === 2) {
+          cardHumi.style.opacity = "0.35";
+          document.getElementById("currHumi").innerText = "--";
+        } else {
+          cardHumi.style.opacity = "1";
+          document.getElementById("currHumi").innerText = Math.round(data.humi);
+        }
+
+        // Update Adjusters
+        targetTemp = data.target;
+        hysteresis = data.hyst;
+        document.getElementById("adjTarget").innerText = targetTemp.toFixed(1);
+        document.getElementById("targetVal").innerText = targetTemp.toFixed(1);
+        document.getElementById("adjHyst").innerText = hysteresis.toFixed(1);
+
+        // Update Relays Card Glowing
         const cardCooler = document.getElementById("cardCooler");
         const cardHeater = document.getElementById("cardHeater");
         const txtCooler = document.getElementById("txtCooler");
         const txtHeater = document.getElementById("txtHeater");
-        
+
         if (data.cooler) {
           cardCooler.className = "card active-cooler";
           txtCooler.innerText = "ACTIVE (ON)";
@@ -753,7 +788,6 @@ const char html_template[] PROGMEM = R"rawliteral(
 
   function setMode(modeVal) {
     currentMode = modeVal;
-    // Update local UI immediately for responsiveness
     for (let i = 0; i <= 3; i++) {
       const btn = document.getElementById(`mode${i}`);
       if (i === currentMode) btn.classList.add("active");
@@ -762,10 +796,22 @@ const char html_template[] PROGMEM = R"rawliteral(
     triggerSave();
   }
 
+  function setSensor(sensorVal) {
+    fetch(`/set?sensor=${sensorVal}`)
+      .then(res => {
+        if (res.ok) {
+          const toast = document.getElementById("toast");
+          toast.className = "show";
+          setTimeout(() => { toast.className = ""; }, 2500);
+          fetchStatus();
+        }
+      })
+      .catch(err => console.error(err));
+  }
+
   function triggerSave() {
     if (saveTimeout) clearTimeout(saveTimeout);
     
-    // Tunggu 800ms setelah user selesai menekan tombol sebelum mengirim ke ESP
     saveTimeout = setTimeout(() => {
       fetch(`/set?target=${targetTemp}&hyst=${hysteresis}&mode=${currentMode}`)
         .then(res => {
@@ -800,8 +846,8 @@ void setup() {
   digitalWrite(RELAY_COOLER, LOW);
   digitalWrite(RELAY_HEATER, LOW);
 
-  dht.begin();
   loadSettings();
+  initSensor();
 
   // Koneksi ke WiFi
   WiFi.begin(ssid, password);
@@ -828,7 +874,8 @@ void setup() {
     json += "\"heater\":" + String(heaterActive ? "true" : "false") + ",";
     json += "\"target\":" + String(settings.targetTemp) + ",";
     json += "\"hyst\":" + String(settings.hysteresis) + ",";
-    json += "\"mode\":" + String(settings.mode);
+    json += "\"mode\":" + String(settings.mode) + ",";
+    json += "\"sensor\":" + String(settings.sensorType);
     json += "}";
     request->send(200, "application/json", json);
   });
@@ -844,6 +891,10 @@ void setup() {
     if (request->hasParam("mode")) {
       settings.mode = request->getParam("mode")->value().toInt();
     }
+    if (request->hasParam("sensor")) {
+      settings.sensorType = request->getParam("sensor")->value().toInt();
+      initSensor();
+    }
     saveSettings();
     request->send(200, "text/plain", "OK");
   });
@@ -855,8 +906,23 @@ void loop() {
   // Baca DHT11 berkala setiap 2 detik
   if (millis() - lastDHTRead > 2000) {
     lastDHTRead = millis();
-    float t = dht.readTemperature();
-    float h = dht.readHumidity();
+    float t = NAN;
+    float h = NAN;
+    
+    if (settings.sensorType == 0 || settings.sensorType == 1) {
+      if (dht != nullptr) {
+        t = dht->readTemperature();
+        h = dht->readHumidity();
+      }
+    } else if (settings.sensorType == 2) {
+      if (sensors != nullptr) {
+        sensors->requestTemperatures();
+        t = sensors->getTempCByIndex(0);
+        if (t == DEVICE_DISCONNECTED_C) t = NAN;
+        h = 0.0; // DS18B20 tidak mengukur kelembaban
+      }
+    }
+
     if (!isnan(t)) currentTemp = t;
     if (!isnan(h)) currentHumidity = h;
 

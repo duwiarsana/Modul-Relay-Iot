@@ -7,6 +7,8 @@
 #include <ESPAsyncWebServer.h>
 #include <WiFiClientSecure.h>
 #include <DHT.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include <EEPROM.h>
 
 // WiFi credentials (ubah sesuai dengan WiFi Anda)
@@ -16,9 +18,7 @@ const char* password = "your-PASSWORD";
 #define RELAY1 4
 #define RELAY2 5
 #define DHTPIN 12
-#define DHTTYPE DHT11
 
-DHT dht(DHTPIN, DHTTYPE);
 AsyncWebServer server(80);
 
 struct BotConfig {
@@ -26,6 +26,7 @@ struct BotConfig {
   char chatId[24];   // Chat ID Telegram User/Group
   float tempAlert;   // Batas alarm suhu
   bool alertEnabled; // Aktif/nonaktif alarm
+  int sensorType;    // 0: DHT11, 1: DHT22, 2: DS18B20
 };
 
 BotConfig config;
@@ -37,6 +38,31 @@ long lastUpdateId = 0;
 bool alertSent = false;
 
 WiFiClientSecure client;
+
+DHT* dht = nullptr;
+OneWire* oneWire = nullptr;
+DallasTemperature* sensors = nullptr;
+
+void initSensor() {
+  if (dht != nullptr) { delete dht; dht = nullptr; }
+  if (sensors != nullptr) { delete sensors; sensors = nullptr; }
+  if (oneWire != nullptr) { delete oneWire; oneWire = nullptr; }
+
+  if (config.sensorType == 0) {
+    dht = new DHT(DHTPIN, DHT11);
+    dht->begin();
+    Serial.println("Sensor Inited: DHT11");
+  } else if (config.sensorType == 1) {
+    dht = new DHT(DHTPIN, DHT22);
+    dht->begin();
+    Serial.println("Sensor Inited: DHT22");
+  } else if (config.sensorType == 2) {
+    oneWire = new OneWire(DHTPIN);
+    sensors = new DallasTemperature(oneWire);
+    sensors->begin();
+    Serial.println("Sensor Inited: DS18B20");
+  }
+}
 
 void saveConfig() {
   Serial.println("Saving config...");
@@ -61,10 +87,14 @@ void loadConfig() {
   if (config.alertEnabled != true && config.alertEnabled != false) {
     config.alertEnabled = false;
   }
+  if (config.sensorType < 0 || config.sensorType > 2) {
+    config.sensorType = 0; // Default DHT11
+  }
 
   Serial.print("Bot Token: "); Serial.println(config.token);
   Serial.print("Chat ID: "); Serial.println(config.chatId);
   Serial.print("Alarm Temp: "); Serial.println(config.tempAlert);
+  Serial.print("Sensor Type: "); Serial.println(config.sensorType);
 }
 
 // Mengirim pesan Telegram secara asinkron menggunakan client secure
@@ -113,18 +143,40 @@ void handleBotCommand(String cmd, String chatId) {
     sendTelegramMessage(chatId, reply);
   } 
   else if (cmd == "/status") {
-    float t = dht.readTemperature();
-    float h = dht.readHumidity();
+    float t = NAN;
+    float h = NAN;
     
-    String r1State = (digitalRead(RELAY1) == HIGH) ? "ON 🟢" : "OFF 🔴";
-    String r2State = (digitalRead(RELAY2) == HIGH) ? "ON 🟢" : "OFF 🔴";
+    if (config.sensorType == 0 || config.sensorType == 1) {
+      if (dht != nullptr) {
+        t = dht->readTemperature();
+        h = dht->readHumidity();
+      }
+    } else if (config.sensorType == 2) {
+      if (sensors != nullptr) {
+        sensors->requestTemperatures();
+        t = sensors->getTempCByIndex(0);
+        if (t == DEVICE_DISCONNECTED_C) t = NAN;
+        h = 0.0;
+      }
+    }
+    
+    String r1State = (digitalWrite(RELAY1) == HIGH) ? "ON 🟢" : "OFF 🔴";
+    String r2State = (digitalWrite(RELAY2) == HIGH) ? "ON 🟢" : "OFF 🔴";
+    
+    String sensorNames[] = {"DHT11", "DHT22", "DS18B20"};
+    String activeSensor = sensorNames[config.sensorType];
     
     String reply = "📊 *STATUS MODUL RELAY*\n\n";
+    reply += "⚙️ Sensor: " + activeSensor + "\n";
     if (!isnan(t)) {
       reply += "🌡️ Suhu: " + String(t, 1) + " °C\n";
-      reply += "💧 Kelembaban: " + String(h, 0) + " %\n\n";
+      if (config.sensorType != 2) {
+        reply += "💧 Kelembaban: " + String(h, 0) + " %\n\n";
+      } else {
+        reply += "\n";
+      }
     } else {
-      reply += "🌡️ Sensor DHT11: Error/Tidak Terbaca\n\n";
+      reply += "🌡️ Sensor: Error/Tidak Terbaca\n\n";
     }
     reply += "💡 Relay 1: " + r1State + "\n";
     reply += "💡 Relay 2: " + r2State + "\n\n";
@@ -313,7 +365,7 @@ const char html_template[] PROGMEM = R"rawliteral(
     .input-wrapper i.prefix-icon { position: absolute; left: 12px; color: var(--text-sub); font-size: 14px; }
     .input-wrapper i.toggle-pwd { position: absolute; right: 12px; color: var(--text-sub); font-size: 14px; cursor: pointer; }
     
-    input[type="text"], input[type="password"], input[type="number"] {
+    input[type="text"], input[type="password"], input[type="number"], select {
       width: 100%;
       background-color: rgba(0, 0, 0, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.08);
@@ -325,7 +377,7 @@ const char html_template[] PROGMEM = R"rawliteral(
       outline: none;
       transition: all 0.3s ease;
     }
-    input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(34, 211, 238, 0.2); }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(34, 211, 238, 0.2); }
     
     /* Toggle switch */
     .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -382,6 +434,7 @@ const char html_template[] PROGMEM = R"rawliteral(
       border-radius: 12px;
       padding: 12px 16px;
       display: flex; align-items: center; justify-content: space-between;
+      transition: opacity 0.3s ease;
     }
     .tele-info span { font-size: 10px; color: var(--text-sub); text-transform: uppercase; font-weight: 600; }
     .tele-info p { font-size: 16px; font-weight: 700; color: #fff; }
@@ -421,7 +474,7 @@ const char html_template[] PROGMEM = R"rawliteral(
       <div class="tele-info"><span>SUHU</span><p><span id="txtTemp">--.-</span>°C</p></div>
       <i class="fa-solid fa-thermometer"></i>
     </div>
-    <div class="tele-card">
+    <div class="tele-card" id="cardHumi">
       <div class="tele-info"><span>HUMIDITY</span><p><span id="txtHumi">--</span>%</p></div>
       <i class="fa-solid fa-droplet"></i>
     </div>
@@ -454,6 +507,19 @@ const char html_template[] PROGMEM = R"rawliteral(
         <div class="input-wrapper">
           <i class="fa-solid fa-user prefix-icon"></i>
           <input type="text" name="chatid" id="chatId" placeholder="Masukkan Chat ID Anda...">
+        </div>
+      </div>
+
+      <!-- Sensor Type Selection -->
+      <div class="input-group">
+        <label>Jenis Sensor (GPIO 12)</label>
+        <div class="input-wrapper">
+          <i class="fa-solid fa-microchip prefix-icon" style="z-index: 10;"></i>
+          <select name="sensor" id="sensorTypeSelect" style="color-scheme: dark; cursor: pointer; padding-left: 38px;">
+            <option value="0">DHT11</option>
+            <option value="1">DHT22</option>
+            <option value="2">DS18B20</option>
+          </select>
         </div>
       </div>
       
@@ -510,7 +576,16 @@ const char html_template[] PROGMEM = R"rawliteral(
       .then(res => res.json())
       .then(data => {
         document.getElementById("txtTemp").innerText = data.temp.toFixed(1);
-        document.getElementById("txtHumi").innerText = Math.round(data.humi);
+        
+        // Handle sensor type and opacity of humidity card
+        const cardHumi = document.getElementById("cardHumi");
+        if (data.sensor === 2) {
+          cardHumi.style.opacity = "0.35";
+          document.getElementById("txtHumi").innerText = "--";
+        } else {
+          cardHumi.style.opacity = "1";
+          document.getElementById("txtHumi").innerText = Math.round(data.humi);
+        }
         
         // Update Relays
         const c1 = document.getElementById("cardR1");
@@ -535,6 +610,7 @@ const char html_template[] PROGMEM = R"rawliteral(
       document.getElementById("chatId").value = data.chatid;
       document.getElementById("tempAlert").value = data.temp;
       document.getElementById("alertSwitch").checked = data.alert;
+      document.getElementById("sensorTypeSelect").value = data.sensor;
     })
     .catch(err => console.error(err));
 
@@ -556,13 +632,14 @@ const char html_template[] PROGMEM = R"rawliteral(
           const toast = document.getElementById("toast");
           toast.className = "show";
           setTimeout(() => { toast.className = ""; }, 2500);
+          fetchStatus();
         } else {
           alert("Gagal menyimpan konfigurasi!");
         }
       })
       .catch(err => {
         console.error(err);
-        alert("Gagal menyimpan konfigurasi!");
+        alert("Gagal menghubungi modul!");
       });
   });
 
@@ -597,8 +674,8 @@ void setup() {
   digitalWrite(RELAY1, LOW);
   digitalWrite(RELAY2, LOW);
 
-  dht.begin();
   loadConfig();
+  initSensor();
 
   // Koneksi WiFi
   WiFi.begin(ssid, password);
@@ -622,7 +699,8 @@ void setup() {
     json += "\"temp\":" + String(currentTemp) + ",";
     json += "\"humi\":" + String(currentHumidity) + ",";
     json += "\"r1\":" + String((digitalRead(RELAY1) == HIGH) ? "true" : "false") + ",";
-    json += "\"r2\":" + String((digitalRead(RELAY2) == HIGH) ? "true" : "false");
+    json += "\"r2\":" + String((digitalRead(RELAY2) == HIGH) ? "true" : "false") + ",";
+    json += "\"sensor\":" + String(config.sensorType);
     json += "}";
     request->send(200, "application/json", json);
   });
@@ -633,7 +711,8 @@ void setup() {
     json += "\"token\":\"" + String(config.token) + "\",";
     json += "\"chatid\":\"" + String(config.chatId) + "\",";
     json += "\"temp\":" + String(config.tempAlert) + ",";
-    json += "\"alert\":" + String(config.alertEnabled ? "true" : "false");
+    json += "\"alert\":" + String(config.alertEnabled ? "true" : "false") + ",";
+    json += "\"sensor\":" + String(config.sensorType);
     json += "}";
     request->send(200, "application/json", json);
   });
@@ -654,6 +733,10 @@ void setup() {
     if (request->hasParam("alert")) {
       config.alertEnabled = (request->getParam("alert")->value() == "true");
     }
+    if (request->hasParam("sensor")) {
+      config.sensorType = request->getParam("sensor")->value().toInt();
+      initSensor();
+    }
     saveConfig();
     request->send(200, "text/plain", "OK");
   });
@@ -672,11 +755,26 @@ void setup() {
 }
 
 void loop() {
-  // Baca DHT11 berkala setiap 2 detik
+  // Baca DHT11/DHT22/DS18B20 berkala setiap 2 detik
   if (millis() - lastDHTRead > 2000) {
     lastDHTRead = millis();
-    float t = dht.readTemperature();
-    float h = dht.readHumidity();
+    float t = NAN;
+    float h = NAN;
+    
+    if (config.sensorType == 0 || config.sensorType == 1) {
+      if (dht != nullptr) {
+        t = dht->readTemperature();
+        h = dht->readHumidity();
+      }
+    } else if (config.sensorType == 2) {
+      if (sensors != nullptr) {
+        sensors->requestTemperatures();
+        t = sensors->getTempCByIndex(0);
+        if (t == DEVICE_DISCONNECTED_C) t = NAN;
+        h = 0.0;
+      }
+    }
+    
     if (!isnan(t)) {
       currentTemp = t;
       currentHumidity = h;
