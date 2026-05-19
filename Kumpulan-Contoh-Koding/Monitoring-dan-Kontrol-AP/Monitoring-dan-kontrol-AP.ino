@@ -31,6 +31,7 @@ ModulConfig config;
 bool relay1 = false;
 bool relay2 = false;
 float suhu = 0;
+float kelembaban = 0;
 unsigned long lastDHTRead = 0;
 
 DHT* dht = nullptr;
@@ -67,7 +68,6 @@ void saveRelayState() {
 
 void loadConfig() {
   EEPROM.get(0, config);
-  // Validasi default jika EEPROM kosong
   if (config.sensorType > 2) {
     config.sensorType = 0; // Default DHT11
   }
@@ -92,7 +92,7 @@ const char html_template[] PROGMEM = R"rawliteral(
   <title>IoT Smart Relay Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Google Fonts & FontAwesome -->
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -349,7 +349,7 @@ const char html_template[] PROGMEM = R"rawliteral(
     }
 
     .temp-value {
-      font-size: 40px;
+      font-size: 34px;
       font-weight: 800;
       color: #fff;
       display: flex;
@@ -358,7 +358,7 @@ const char html_template[] PROGMEM = R"rawliteral(
     }
 
     .temp-unit {
-      font-size: 20px;
+      font-size: 18px;
       color: var(--text-sub);
       font-weight: 500;
       margin-left: 2px;
@@ -408,7 +408,7 @@ const char html_template[] PROGMEM = R"rawliteral(
     footer a {
       color: var(--primary);
       text-decoration: none;
-      font-weight: 500;
+      font-weight: 550;
     }
 
     footer a:hover {
@@ -463,23 +463,38 @@ const char html_template[] PROGMEM = R"rawliteral(
     </div>
   </div>
 
-  <!-- Temperature Display Card -->
+  <!-- Temperature & Humidity Display Cards -->
   <div class="grid">
-    <div class="card" style="grid-column: span 2;">
+    <!-- Suhu Card -->
+    <div class="card">
       <div class="temp-info">
         <span class="card-title" style="color: var(--text-sub);"><i class="fa-solid fa-thermometer-half" style="color: #ef4444;"></i> <span id="lblSensor">Sensor</span></span>
-        <span style="font-size: 12px; color: var(--text-sub);">Real-time Telemetry</span>
+        <span style="font-size: 11px; color: var(--text-sub);">Suhu</span>
       </div>
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <div>
-          <p style="font-size: 12px; color: var(--text-sub); margin-bottom: 2px;">SUHU RUANGAN</p>
-          <div class="temp-value">
-            <span id="temp">0.0</span>
-            <span class="temp-unit">°C</span>
-          </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
+        <div class="temp-value">
+          <span id="temp">0.0</span>
+          <span class="temp-unit">°C</span>
         </div>
-        <div style="background: rgba(239, 68, 68, 0.08); width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(239, 68, 68, 0.15);">
-          <i class="fa-solid fa-fire-flame-simple" style="font-size: 28px; color: #ef4444;"></i>
+        <div style="background: rgba(239, 68, 68, 0.08); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(239, 68, 68, 0.15);">
+          <i class="fa-solid fa-temperature-high" style="font-size: 20px; color: #ef4444;"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kelembaban Card -->
+    <div class="card" id="cardHumi">
+      <div class="temp-info">
+        <span class="card-title" style="color: var(--text-sub);"><i class="fa-solid fa-droplet" style="color: #3b82f6;"></i> Kelembaban</span>
+        <span style="font-size: 11px; color: var(--text-sub);">Udara</span>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
+        <div class="temp-value">
+          <span id="humi">0</span>
+          <span class="temp-unit">%</span>
+        </div>
+        <div style="background: rgba(59, 130, 246, 0.08); width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(59, 130, 246, 0.15);">
+          <i class="fa-solid fa-droplet" style="font-size: 20px; color: #3b82f6;"></i>
         </div>
       </div>
     </div>
@@ -514,6 +529,8 @@ const char html_template[] PROGMEM = R"rawliteral(
 <script>
   let tempData = [], timeLabels = [];
   const tempSpan = document.getElementById("temp");
+  const humiSpan = document.getElementById("humi");
+  const cardHumi = document.getElementById("cardHumi");
   const r1Switch = document.getElementById("btn-r1");
   const r2Switch = document.getElementById("btn-r2");
   const r1Text = document.getElementById("txt-r1");
@@ -573,13 +590,22 @@ const char html_template[] PROGMEM = R"rawliteral(
     fetch('/data').then(res => res.json()).then(data => {
       tempSpan.innerText = data.temp.toFixed(1);
       
-      updateRelayUI(1, data.r1);
-      updateRelayUI(2, data.r2);
-
       // Update sensor label
       const sensorNames = ["Sensor DHT11", "Sensor DHT22", "Sensor DS18B20"];
       document.getElementById("lblSensor").innerText = sensorNames[data.sensor];
       document.getElementById("sensorTypeSelect").value = data.sensor;
+
+      // Handle kelembaban card opacity if DS18B20
+      if (data.sensor === 2) {
+        cardHumi.style.opacity = "0.35";
+        humiSpan.innerText = "--";
+      } else {
+        cardHumi.style.opacity = "1";
+        humiSpan.innerText = Math.round(data.humi);
+      }
+
+      updateRelayUI(1, data.r1);
+      updateRelayUI(2, data.r2);
 
       const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       timeLabels.push(now);
@@ -632,6 +658,7 @@ void handleRoot() {
 void handleData() {
   String json = "{";
   json += "\"temp\":" + String(suhu) + ",";
+  json += "\"humi\":" + String(kelembaban) + ",";
   json += "\"r1\":" + String(relay1 ? "true" : "false") + ",";
   json += "\"r2\":" + String(relay2 ? "true" : "false") + ",";
   json += "\"sensor\":" + String(config.sensorType);
@@ -695,13 +722,16 @@ void loop() {
     if (config.sensorType == 0 || config.sensorType == 1) {
       if (dht != nullptr) {
         float t = dht->readTemperature();
+        float h = dht->readHumidity();
         if (!isnan(t)) suhu = t;
+        if (!isnan(h)) kelembaban = h;
       }
     } else if (config.sensorType == 2) {
       if (sensors != nullptr) {
         sensors->requestTemperatures();
         float t = sensors->getTempCByIndex(0);
         if (t != DEVICE_DISCONNECTED_C) suhu = t;
+        kelembaban = 0;
       }
     }
   }
