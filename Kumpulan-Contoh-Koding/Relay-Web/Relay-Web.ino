@@ -5,6 +5,8 @@
 
 #include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <ESP8266mDNS.h>
+
 
 // Ganti dengan nama dan password WiFi kamu
 const char *ssid = "your-SSID";
@@ -303,8 +305,14 @@ void setup() {
 
   // Mulai server
   server.begin();
+
+  // Inisialisasi mDNS
+  if (MDNS.begin("relay-web")) {
+    Serial.println("mDNS responder started! Akses di: http://relay-web.local");
+  }
 }
 
+
 void loop() {
-  // Tidak ada proses di loop karena semua handled oleh web server async
+  MDNS.update();
 }

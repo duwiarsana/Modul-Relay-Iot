@@ -45,6 +45,33 @@ Contoh firmware disediakan di folder [`/Kumpulan-Contoh-Koding`](Kumpulan-Contoh
 
 ---
 
+## 🔌 Penggunaan dengan Wemos D1 Mini / NodeMCU
+
+Jika Anda ingin merakit proyek ini menggunakan development board **Wemos D1 Mini** atau **NodeMCU ESP8266** (misalnya menggunakan breadboard / kabel jumper), Anda dapat menggunakan kode program yang sama tanpa perlu mengubah isi kodenya.
+
+### 📌 Skema Sambungan Kabel (Wiring)
+
+Hubungkan kaki komponen ke pin board Wemos D1 Mini / NodeMCU sebagai berikut:
+
+| Komponen | Pin Board (Wemos D1 Mini / NodeMCU) | Pin GPIO ESP8266 | Keterangan |
+| :--- | :--- | :--- | :--- |
+| **Relay 1** (IN / Trigger) | **D2** | GPIO 4 | Aktif HIGH |
+| **Relay 2** (IN / Trigger) | **D1** | GPIO 5 | Aktif HIGH |
+| **Sensor DHT11** (Data) | **D6** | GPIO 12 | Hubungkan ke pin data DHT11 |
+| **VCC** (Relay & DHT11) | **5V / VIN / 3.3V** | - | Sesuaikan dengan tegangan kerja relay/sensor Anda |
+| **GND** (Relay & DHT11) | **GND** | - | Hubungkan semua ground menjadi satu |
+
+> 💡 **Info:** Di dalam kode program, pin didefinisikan menggunakan nomor GPIO langsung (`4` untuk Relay 1, `5` untuk Relay 2, dan `12` untuk DHT11). Pin ini secara default terpetakan ke **D2**, **D1**, dan **D6** pada board NodeMCU / Wemos D1 Mini.
+
+### 💻 Cara Upload di Arduino IDE
+
+1. Buka Arduino IDE dan buka salah satu contoh sketch dari folder `Kumpulan-Contoh-Koding`.
+2. Masuk ke **Tools > Board > ESP8266 Boards** lalu pilih board sesuai yang Anda gunakan (misal: `LOLIN(WEMOS) D1 mini (clone)` atau `NodeMCU 1.0 (ESP-12E Module)`).
+3. Pilih port COM yang sesuai.
+4. Klik **Upload**.
+
+---
+
 ## 💡 Contoh Penggunaan
 
 - Saklar lampu pintar
@@ -94,6 +121,7 @@ Folder ini berisi kumpulan contoh koding siap pakai yang bisa langsung di-flash 
    - Mode Client (konek ke WiFi rumah).
    - Tampilan web control panel modern (Glassmorphism) untuk menghidupkan dan mematikan 2 relay secara nirkabel.
    - Sinkronisasi status relay secara real-time pada halaman web saat pertama kali dimuat.
+   - **Dukungan mDNS:** Bisa diakses langsung menggunakan domain lokal `http://relay-web.local` tanpa perlu tahu IP address-nya.
 
 2. **[Relay-Web-AP](Kumpulan-Contoh-Koding/Relay-Web-AP) (Baru! ⚡)**
    - Mode Access Point (AP) dengan **Captive Portal**.
@@ -104,6 +132,7 @@ Folder ini berisi kumpulan contoh koding siap pakai yang bisa langsung di-flash 
    - Mode Client (konek ke WiFi rumah).
    - Dilengkapi grafik tren suhu real-time (menggunakan Chart.js) dari sensor DHT11.
    - Status switch relay otomatis kembali ke posisi semula jika koneksi terputus.
+   - **Dukungan mDNS:** Bisa diakses langsung menggunakan domain lokal `http://monitoring-kontrol.local` tanpa perlu tahu IP address-nya.
 
 4. **[Monitoring-dan-Kontrol-AP](Kumpulan-Contoh-Koding/Monitoring-dan-Kontrol-AP) (Baru! ⚡)**
    - Mode Access Point (AP) dengan **Captive Portal** + sensor suhu DHT11.
@@ -114,18 +143,21 @@ Folder ini berisi kumpulan contoh koding siap pakai yang bisa langsung di-flash 
    - Mode Client (konek ke WiFi rumah untuk sinkronisasi waktu NTP).
    - Panel penjadwalan waktu (ON/OFF) otomatis berbasis jam digital real-time untuk masing-masing relay.
    - Dilengkapi sistem proteksi agar aman dari error saat EEPROM kosong.
+   - **Dukungan mDNS:** Bisa diakses langsung menggunakan domain lokal `http://timer-relay.local` tanpa perlu tahu IP address-nya.
 
 6. **[Smart-Thermostat](Kumpulan-Contoh-Koding/Smart-Thermostat) (Baru! ⚡)**
    - Mengubah modul menjadi pengatur suhu otomatis (Klimatisasi).
    - Relay 1 sebagai pendingin (Cooler/Kipas), Relay 2 sebagai pemanas (Heater).
    - Menggunakan dial melingkar (*circular thermostat gauge*) yang interaktif untuk menyetel target suhu dan histeresis.
    - Dilengkapi dengan 4 mode operasi: **Auto**, **Manual Cool**, **Manual Heat**, dan **System Off**.
+   - **Dukungan mDNS:** Bisa diakses langsung menggunakan domain lokal `http://smart-thermostat.local` tanpa perlu tahu IP address-nya.
 
 7. **[Telegram-Bot](Kumpulan-Contoh-Koding/Telegram-Bot) (Baru! ⚡)**
    - Mengontrol 2 relay dan membaca sensor DHT11 langsung lewat chat Telegram Bot.
    - Token Bot Telegram dan Chat ID dapat diubah dan disimpan langsung dari halaman web modul secara asinkron.
    - Dilengkapi dengan fitur **Alarm Notifikasi Suhu Otomatis** ke HP Anda jika mendeteksi suhu melebihi ambang batas aman.
    - Tanpa library eksternal Telegram pihak ketiga (koneksi HTTPS super ringan & anti-fingerprint-expired).
+   - **Dukungan mDNS:** Halaman konfigurasi lokal bisa diakses langsung menggunakan domain lokal `http://telegram-bot.local` tanpa perlu tahu IP address-nya.
 
 ## 📄 Lisensi
 

@@ -30,7 +30,7 @@ Project ini dibuat khusus untuk **modul Relay IoT 2 channel berbasis ESP8266** k
 1. Ganti `ssid` dan `password` di sketch sesuai jaringan WiFi kamu.
 2. Upload ke board ESP8266 (Wemos D1 Mini, NodeMCU, dll).
 3. Buka **Serial Monitor**, catat IP address-nya.
-4. Akses IP itu lewat browser di HP/laptop.
+4. Akses modul via browser menggunakan alamat IP tersebut atau langsung menggunakan nama domain lokal mDNS: `http://relay-web.local`.
 5. Klik tombol "Relay 1 ON", "Relay 1 OFF", dst.
 
 ---

@@ -5,7 +5,9 @@
 
 #include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <ESP8266mDNS.h>
 #include <WiFiClientSecure.h>
+
 #include <DHT.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -752,9 +754,17 @@ void setup() {
   });
 
   server.begin();
+
+  // Inisialisasi mDNS
+  if (MDNS.begin("telegram-bot")) {
+    Serial.println("mDNS responder started! Akses di: http://telegram-bot.local");
+  }
 }
 
+
 void loop() {
+  MDNS.update();
+
   // Baca DHT11/DHT22/DS18B20 berkala setiap 2 detik
   if (millis() - lastDHTRead > 2000) {
     lastDHTRead = millis();

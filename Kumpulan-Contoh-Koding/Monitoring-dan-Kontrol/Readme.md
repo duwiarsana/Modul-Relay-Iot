@@ -49,7 +49,7 @@ Project ini dibuat oleh **Anak Agung Duwi Arsana** dan dirancang khusus untuk di
 2. Ganti `ssid` dan `password` sesuai WiFi kamu
 3. Pasang sensor DHT11 ke JST socket
 4. Colok power 5V (USB Type-C atau DC)
-5. Buka IP ESP di browser
+5. Akses modul via browser menggunakan alamat IP tersebut atau langsung menggunakan nama domain lokal mDNS: `http://monitoring-kontrol.local`.
 6. Kontrol dan pantau suhu langsung dari web
 
 ---

@@ -32,7 +32,7 @@ Pastikan kamu install library berikut di Arduino IDE:
 1. Ganti SSID dan password WiFi di bagian `const char* ssid` dan `password`.
 2. Upload ke board ESP8266 (misalnya Wemos D1 Mini atau NodeMCU).
 3. Buka **Serial Monitor**, catat alamat IP dari ESP8266.
-4. Akses alamat IP tersebut via browser.
+4. Akses modul via browser menggunakan alamat IP tersebut atau langsung menggunakan nama domain lokal mDNS: `http://timer-relay.local`.
 5. Atur waktu ON/OFF masing-masing relay.
 6. Klik **Simpan**, dan relay akan menyala/mati sesuai jadwal.
 

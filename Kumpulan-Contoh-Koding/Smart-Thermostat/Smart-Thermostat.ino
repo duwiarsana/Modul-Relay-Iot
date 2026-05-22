@@ -5,7 +5,9 @@
 
 #include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <ESP8266mDNS.h>
 #include <DHT.h>
+
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <EEPROM.h>
@@ -900,9 +902,17 @@ void setup() {
   });
 
   server.begin();
+
+  // Inisialisasi mDNS
+  if (MDNS.begin("smart-thermostat")) {
+    Serial.println("mDNS responder started! Akses di: http://smart-thermostat.local");
+  }
 }
 
+
 void loop() {
+  MDNS.update();
+
   // Baca DHT11 berkala setiap 2 detik
   if (millis() - lastDHTRead > 2000) {
     lastDHTRead = millis();

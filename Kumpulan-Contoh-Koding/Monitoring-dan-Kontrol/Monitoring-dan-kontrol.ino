@@ -3,7 +3,9 @@
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
 #include <DHT.h>
+
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <EEPROM.h>
@@ -704,9 +706,16 @@ void setup() {
   server.on("/set", handleSetRelay);
   server.on("/setsensor", handleSetSensor);
   server.begin();
+
+  // Inisialisasi mDNS
+  if (MDNS.begin("monitoring-kontrol")) {
+    Serial.println("mDNS responder started! Akses di: http://monitoring-kontrol.local");
+  }
 }
 
+
 void loop() {
+  MDNS.update();
   server.handleClient();
   if (millis() - lastDHTRead > 2000) {
     lastDHTRead = millis();

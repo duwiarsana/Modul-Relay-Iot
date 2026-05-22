@@ -5,7 +5,9 @@
 
 #include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <ESP8266mDNS.h>
 #include <NTPClient.h>
+
 #include <WiFiUdp.h>
 #include <EEPROM.h>
 
@@ -467,33 +469,44 @@ void setup() {
   });
 
   server.begin();
+
+  // Inisialisasi mDNS
+  if (MDNS.begin("timer-relay")) {
+    Serial.println("mDNS responder started! Akses di: http://timer-relay.local");
+  }
 }
 
+
 void loop() {
-  // Update waktu dari NTP server
-  timeClient.update();
-  int currentHour = timeClient.getHours();
-  int currentMinute = timeClient.getMinutes();
+  MDNS.update();
 
-  // Log waktu saat ini ke Serial Monitor
-  Serial.print("Current Time: ");
-  Serial.print(currentHour);
-  Serial.print(":");
-  Serial.println(currentMinute);
+  static unsigned long lastTimerUpdate = 0;
+  if (millis() - lastTimerUpdate >= 1000) {
+    lastTimerUpdate = millis();
 
-  // Kontrol Relay 1
-  if (currentHour == relay1Setting.hourOn && currentMinute == relay1Setting.minuteOn) {
-    digitalWrite(RELAY1, HIGH);
-  } else if (currentHour == relay1Setting.hourOff && currentMinute == relay1Setting.minuteOff) {
-    digitalWrite(RELAY1, LOW);
+    // Update waktu dari NTP server
+    timeClient.update();
+    int currentHour = timeClient.getHours();
+    int currentMinute = timeClient.getMinutes();
+
+    // Log waktu saat ini ke Serial Monitor
+    Serial.print("Current Time: ");
+    Serial.print(currentHour);
+    Serial.print(":");
+    Serial.println(currentMinute);
+
+    // Kontrol Relay 1
+    if (currentHour == relay1Setting.hourOn && currentMinute == relay1Setting.minuteOn) {
+      digitalWrite(RELAY1, HIGH);
+    } else if (currentHour == relay1Setting.hourOff && currentMinute == relay1Setting.minuteOff) {
+      digitalWrite(RELAY1, LOW);
+    }
+
+    // Kontrol Relay 2
+    if (currentHour == relay2Setting.hourOn && currentMinute == relay2Setting.minuteOn) {
+      digitalWrite(RELAY2, HIGH);
+    } else if (currentHour == relay2Setting.hourOff && currentMinute == relay2Setting.minuteOff) {
+      digitalWrite(RELAY2, LOW);
+    }
   }
-
-  // Kontrol Relay 2
-  if (currentHour == relay2Setting.hourOn && currentMinute == relay2Setting.minuteOn) {
-    digitalWrite(RELAY2, HIGH);
-  } else if (currentHour == relay2Setting.hourOff && currentMinute == relay2Setting.minuteOff) {
-    digitalWrite(RELAY2, LOW);
-  }
-
-  delay(1000); // Periksa setiap detik
 }
