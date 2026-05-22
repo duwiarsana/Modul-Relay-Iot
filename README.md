@@ -159,6 +159,11 @@ Folder ini berisi kumpulan contoh koding siap pakai yang bisa langsung di-flash 
    - Tanpa library eksternal Telegram pihak ketiga (koneksi HTTPS super ringan & anti-fingerprint-expired).
    - **Dukungan mDNS:** Halaman konfigurasi lokal bisa diakses langsung menggunakan domain lokal `http://telegram-bot.local` tanpa perlu tahu IP address-nya.
 
+8. **[Telegram-Bot-Universal](Kumpulan-Contoh-Koding/Telegram-Bot-Universal)**
+   - Mengontrol 2 relay dan membaca sensor DHT11 lewat chat Telegram menggunakan library populer **UniversalTelegramBot** (oleh Brian Lough) & **ArduinoJson**.
+   - Dilengkapi dengan fitur keamanan verifikasi Chat ID agar hanya pemilik bot terdaftar yang memiliki akses kontrol relay.
+   - Menggunakan client secure dengan mode bypass sertifikat SSL (`client.setInsecure()`) agar modul berjalan awet tanpa khawatir perubahan sertifikat HTTPS api.telegram.org.
+
 ## 📄 Lisensi
 
 Proyek ini dirilis di bawah lisensi MIT. Silakan gunakan, modifikasi, dan bagikan sesuai kebutuhan, selama tetap menyertakan kredit ke pembuat asli.
