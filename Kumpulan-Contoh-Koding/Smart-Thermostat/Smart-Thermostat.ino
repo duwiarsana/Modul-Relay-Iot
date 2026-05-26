@@ -38,6 +38,8 @@ DHT* dht = nullptr;
 OneWire* oneWire = nullptr;
 DallasTemperature* sensors = nullptr;
 
+AsyncWebServer server(80);
+
 void initSensor() {
   if (dht != nullptr) { delete dht; dht = nullptr; }
   if (sensors != nullptr) { delete sensors; sensors = nullptr; }
