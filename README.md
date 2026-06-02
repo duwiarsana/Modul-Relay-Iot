@@ -164,6 +164,16 @@ Folder ini berisi kumpulan contoh koding siap pakai yang bisa langsung di-flash 
    - Dilengkapi dengan fitur keamanan verifikasi Chat ID agar hanya pemilik bot terdaftar yang memiliki akses kontrol relay.
    - Menggunakan client secure dengan mode bypass sertifikat SSL (`client.setInsecure()`) agar modul berjalan awet tanpa khawatir perubahan sertifikat HTTPS api.telegram.org.
 
+9. **[Alexa-Local-Control](Kumpulan-Contoh-Koding/Alexa-Local-Control) (Baru! ⚡)**
+   - Mengontrol 2-channel relay secara nirkabel menggunakan perintah suara **Amazon Alexa** langsung di jaringan lokal (tanpa cloud).
+   - ESP8266 diemulasikan sebagai Philips Hue Bridge menggunakan library **Espalexa** agar otomatis terdeteksi oleh aplikasi Alexa / speaker Echo Anda.
+   - Sensor DHT11 tetap dipantau secara berkala melalui serial monitor secara non-blocking.
+
+10. **[Google-Assistant-Control](Kumpulan-Contoh-Koding/Google-Assistant-Control) (Baru! ⚡)**
+    - Mengontrol 2-channel relay dan memantau suhu/kelembaban DHT11 secara nirkabel menggunakan **Google Assistant / Google Home**.
+    - Menggunakan platform cloud gratis **Sinric Pro** untuk menghubungkan modul ESP8266 secara aman ke ekosistem Google Smart Home.
+
+
 ## 📄 Lisensi
 
 Proyek ini dirilis di bawah lisensi MIT. Silakan gunakan, modifikasi, dan bagikan sesuai kebutuhan, selama tetap menyertakan kredit ke pembuat asli.
