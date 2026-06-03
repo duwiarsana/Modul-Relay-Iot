@@ -173,6 +173,11 @@ Folder ini berisi kumpulan contoh koding siap pakai yang bisa langsung di-flash 
     - Mengontrol 2-channel relay dan memantau suhu/kelembaban DHT11 secara nirkabel menggunakan **Google Assistant / Google Home**.
     - Menggunakan platform cloud gratis **Sinric Pro** untuk menghubungkan modul ESP8266 secara aman ke ekosistem Google Smart Home.
 
+11. **[ESP-NOW-Remote](Kumpulan-Contoh-Koding/ESP-NOW-Remote) (Baru! ⚡)**
+    - Kontrol nirkabel offline peer-to-peer berkecepatan tinggi tanpa router WiFi menggunakan protokol bawaan ESP-NOW.
+    - Terdiri dari program Receiver (untuk Modul IoT Relay) dan program Transmitter (untuk modul pemancar eksternal dengan tombol remote).
+
+
 
 ## 📄 Lisensi
 
