@@ -177,7 +177,9 @@ Folder ini berisi kumpulan contoh koding siap pakai yang bisa langsung di-flash 
     - Kontrol nirkabel offline peer-to-peer berkecepatan tinggi tanpa router WiFi menggunakan protokol bawaan ESP-NOW.
     - Terdiri dari program Receiver (untuk Modul IoT Relay) dan program Transmitter (untuk modul pemancar eksternal dengan tombol remote).
 
-
+12. **[MQTT-Control](Kumpulan-Contoh-Koding/MQTT-Control) (Baru! ⚡)**
+    - Kontrol 2-channel relay dan monitoring suhu/kelembaban DHT11 melalui broker MQTT gratis (`broker.hivemq.com`).
+    - Menggunakan topic dinamis berbasiskan unik Chip ID ESP8266 agar tidak bertabrakan dengan user/perangkat lain.
 
 ## 📄 Lisensi
 
