@@ -7,9 +7,6 @@
 #include <ESPAsyncWebServer.h>
 #include <ESP8266mDNS.h>
 #include <DHT.h>
-
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <EEPROM.h>
 
 // WiFi credentials (ubah sesuai dengan WiFi Anda)
@@ -19,12 +16,15 @@ const char* password = "your-PASSWORD";
 #define RELAY_COOLER 4 // Relay 1 (Cooler / Exhaust fan)
 #define RELAY_HEATER 5 // Relay 2 (Heater / Pemanas)
 #define DHTPIN 12      // Sensor Pin
+#define DHTTYPE DHT11
+
+// Inisialisasi sensor DHT11 statis (persis seperti contoh DHTtester)
+DHT dht(DHTPIN, DHTTYPE);
 
 struct ThermostatSetting {
   float targetTemp;
   float hysteresis;
   int mode; // 0: Auto, 1: Manual Cooler, 2: Manual Heater, 3: Off
-  int sensorType; // 0: DHT11, 1: DHT22, 2: DS18B20
 };
 
 ThermostatSetting settings;
@@ -33,35 +33,6 @@ float currentHumidity = 0.0;
 bool coolerActive = false;
 bool heaterActive = false;
 unsigned long lastDHTRead = 0;
-
-DHT* dht = nullptr;
-OneWire* oneWire = nullptr;
-DallasTemperature* sensors = nullptr;
-
-AsyncWebServer server(80);
-
-void initSensor() {
-  if (dht != nullptr) { delete dht; dht = nullptr; }
-  if (sensors != nullptr) { delete sensors; sensors = nullptr; }
-  if (oneWire != nullptr) { delete oneWire; oneWire = nullptr; }
-
-  pinMode(DHTPIN, INPUT_PULLUP);
-
-  if (settings.sensorType == 0) {
-    dht = new DHT(DHTPIN, DHT11);
-    dht->begin();
-    Serial.println("Sensor Inited: DHT11");
-  } else if (settings.sensorType == 1) {
-    dht = new DHT(DHTPIN, DHT22);
-    dht->begin();
-    Serial.println("Sensor Inited: DHT22");
-  } else if (settings.sensorType == 2) {
-    oneWire = new OneWire(DHTPIN);
-    sensors = new DallasTemperature(oneWire);
-    sensors->begin();
-    Serial.println("Sensor Inited: DS18B20");
-  }
-}
 
 void saveSettings() {
   Serial.println("Saving settings...");
@@ -83,14 +54,10 @@ void loadSettings() {
   if (settings.mode < 0 || settings.mode > 3) {
     settings.mode = 0; // Default: AUTO
   }
-  if (settings.sensorType < 0 || settings.sensorType > 2) {
-    settings.sensorType = 0; // Default: DHT11
-  }
   
   Serial.print("Target Temp: "); Serial.println(settings.targetTemp);
   Serial.print("Hysteresis: "); Serial.println(settings.hysteresis);
   Serial.print("Mode: "); Serial.println(settings.mode);
-  Serial.print("Sensor Type: "); Serial.println(settings.sensorType);
 }
 
 // HTML & CSS Template disimpan di Flash Memory (PROGMEM) untuk efisiensi RAM
@@ -881,7 +848,7 @@ void setup() {
     json += "\"target\":" + String(settings.targetTemp) + ",";
     json += "\"hyst\":" + String(settings.hysteresis) + ",";
     json += "\"mode\":" + String(settings.mode) + ",";
-    json += "\"sensor\":" + String(settings.sensorType);
+    json += "\"sensor\":0";
     json += "}";
     request->send(200, "application/json", json);
   });

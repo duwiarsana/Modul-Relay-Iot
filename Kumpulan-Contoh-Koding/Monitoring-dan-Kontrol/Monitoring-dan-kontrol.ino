@@ -5,14 +5,15 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <DHT.h>
-
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <EEPROM.h>
 
 #define DHTPIN 12
+#define DHTTYPE DHT11
 #define RELAY1_PIN 4
 #define RELAY2_PIN 5
+
+// Inisialisasi sensor DHT11 statis (persis seperti contoh DHTtester)
+DHT dht(DHTPIN, DHTTYPE);
 
 const char* ssid = "SSID"; //ganti pakai nama hotspot yang ada
 const char* password = "PASSWORD"; //ganti juga password yang sesuai
@@ -22,7 +23,6 @@ ESP8266WebServer server(80);
 struct ModulConfig {
   bool relay1;
   bool relay2;
-  byte sensorType; // 0 = DHT11, 1 = DHT22, 2 = DS18B20
 };
 
 ModulConfig config;
@@ -31,33 +31,6 @@ bool relay2 = false;
 float suhu = 0;
 float kelembaban = 0;
 unsigned long lastDHTRead = 0;
-
-DHT* dht = nullptr;
-OneWire* oneWire = nullptr;
-DallasTemperature* sensors = nullptr;
-
-void initSensor() {
-  if (dht != nullptr) { delete dht; dht = nullptr; }
-  if (sensors != nullptr) { delete sensors; sensors = nullptr; }
-  if (oneWire != nullptr) { delete oneWire; oneWire = nullptr; }
-
-  pinMode(DHTPIN, INPUT_PULLUP);
-
-  if (config.sensorType == 0) {
-    dht = new DHT(DHTPIN, DHT11);
-    dht->begin();
-    Serial.println("Sensor Inited: DHT11");
-  } else if (config.sensorType == 1) {
-    dht = new DHT(DHTPIN, DHT22);
-    dht->begin();
-    Serial.println("Sensor Inited: DHT22");
-  } else if (config.sensorType == 2) {
-    oneWire = new OneWire(DHTPIN);
-    sensors = new DallasTemperature(oneWire);
-    sensors->begin();
-    Serial.println("Sensor Inited: DS18B20");
-  }
-}
 
 void saveRelayState() {
   config.relay1 = relay1;
@@ -68,11 +41,6 @@ void saveRelayState() {
 
 void loadConfig() {
   EEPROM.get(0, config);
-  if (config.sensorType > 2) {
-    config.sensorType = 0; // Default DHT11
-    EEPROM.put(0, config);
-    EEPROM.commit();
-  }
   if (config.relay1 != 0 && config.relay1 != 1) config.relay1 = false;
   if (config.relay2 != 0 && config.relay2 != 1) config.relay2 = false;
   
@@ -81,8 +49,6 @@ void loadConfig() {
   
   digitalWrite(RELAY1_PIN, relay1 ? HIGH : LOW);
   digitalWrite(RELAY2_PIN, relay2 ? HIGH : LOW);
-  
-  Serial.print("Loaded sensor: "); Serial.println(config.sensorType);
 }
 
 // HTML & CSS Template disimpan di Flash Memory (PROGMEM)
@@ -663,7 +629,7 @@ void handleData() {
   json += "\"humi\":" + String(kelembaban) + ",";
   json += "\"r1\":" + String(relay1 ? "true" : "false") + ",";
   json += "\"r2\":" + String(relay2 ? "true" : "false") + ",";
-  json += "\"sensor\":" + String(config.sensorType);
+  json += "\"sensor\":0";
   json += "}";
   server.send(200, "application/json", json);
 }
@@ -679,15 +645,6 @@ void handleSetRelay() {
   server.send(200, "text/plain", "OK");
 }
 
-void handleSetSensor() {
-  if (server.hasArg("type")) {
-    config.sensorType = server.arg("type").toInt();
-    saveRelayState();
-    initSensor();
-  }
-  server.send(200, "text/plain", "OK");
-}
-
 void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
@@ -696,7 +653,8 @@ void setup() {
   pinMode(RELAY2_PIN, OUTPUT);
   
   loadConfig();
-  initSensor();
+  dht.begin();
+  Serial.println("DHT11 Sensor Started!");
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
@@ -708,7 +666,6 @@ void setup() {
   server.on("/", handleRoot);
   server.on("/data", handleData);
   server.on("/set", handleSetRelay);
-  server.on("/setsensor", handleSetSensor);
   server.begin();
 
   // Inisialisasi mDNS
@@ -723,25 +680,9 @@ void loop() {
   server.handleClient();
   if (millis() - lastDHTRead > 2000) {
     lastDHTRead = millis();
-    if (config.sensorType == 0 || config.sensorType == 1) {
-      if (dht != nullptr) {
-        float t = dht->readTemperature();
-        float h = dht->readHumidity();
-        if (isnan(t) || isnan(h)) {
-          delay(50);
-          t = dht->readTemperature();
-          h = dht->readHumidity();
-        }
-        if (!isnan(t)) suhu = t;
-        if (!isnan(h)) kelembaban = h;
-      }
-    } else if (config.sensorType == 2) {
-      if (sensors != nullptr) {
-        sensors->requestTemperatures();
-        float t = sensors->getTempCByIndex(0);
-        if (t != DEVICE_DISCONNECTED_C) suhu = t;
-        kelembaban = 0;
-      }
-    }
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    if (!isnan(t)) suhu = t;
+    if (!isnan(h)) kelembaban = h;
   }
 }
