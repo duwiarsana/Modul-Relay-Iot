@@ -1296,6 +1296,267 @@
       flex-direction: column;
     }
 
+    /* 4. MQTT-Control Simulator Styles */
+    .mqtt-sim {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #06090f;
+    }
+    .mqtt-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 15px;
+      gap: 15px;
+      overflow-y: auto;
+    }
+    .mqtt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .mqtt-logo-area {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mqtt-logo-icon {
+      background: rgba(0, 242, 254, 0.1);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+    }
+    .mqtt-logo-title h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .mqtt-logo-title p {
+      font-size: 10px;
+      color: var(--text-sub);
+    }
+    .mqtt-badge {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #10b981;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+    }
+    .mqtt-broker-info {
+      font-size: 10px;
+      color: var(--text-sub);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .mqtt-sensor-card {
+      background: rgba(20, 26, 42, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+    .mqtt-sensor-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .mqtt-sensor-lbl {
+      font-size: 9px;
+      color: var(--text-sub);
+    }
+    .mqtt-sensor-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .mqtt-relays-card {
+      background: rgba(20, 26, 42, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .mqtt-relay-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mqtt-relay-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .mqtt-terminal {
+      flex: 1;
+      background: #020406;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 9px;
+      color: #38bdf8;
+      overflow-y: auto;
+      min-height: 120px;
+      max-height: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .mqtt-log-item {
+      line-height: 1.3;
+      word-break: break-all;
+    }
+    .mqtt-log-pub {
+      color: #a7f3d0;
+    }
+    .mqtt-log-sub {
+      color: #fde047;
+    }
+    .mqtt-log-info {
+      color: #94a3b8;
+    }
+
+    /* 5. Telegram Bot Simulator Styles */
+    .telegram-sim {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #182533;
+    }
+    .tg-header {
+      background: #17212b;
+      padding: 10px 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .tg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #2481cc;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .tg-chat-info h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .tg-chat-info p {
+      font-size: 10px;
+      color: #5288c1;
+    }
+    .tg-chat-area {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 250px;
+    }
+    .tg-msg {
+      max-width: 80%;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    .tg-msg-in {
+      background: #182533;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      color: #fff;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .tg-msg-out {
+      background: #2b5278;
+      color: #fff;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    .tg-time {
+      display: block;
+      font-size: 8px;
+      color: rgba(255, 255, 255, 0.4);
+      text-align: right;
+      margin-top: 4px;
+    }
+    .tg-keyboard {
+      background: #17212b;
+      padding: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tg-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tg-input-row input {
+      flex: 1;
+      background: #24303f;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 12px;
+      outline: none;
+    }
+    .tg-btn-send {
+      background: none;
+      border: none;
+      color: #5288c1;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .tg-buttons-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .tg-kb-btn {
+      background: #202b36;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 8px;
+      color: #5288c1;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    .tg-kb-btn:hover {
+      background: #2b394a;
+      color: #fff;
+    }
+
   </style>
 </head>
 <body>
@@ -1346,6 +1607,28 @@
               <div>
                 <h4>Smart Thermostat</h4>
                 <p>Dial Gauge, Target Temp & Mode</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="font-size: 12px;"></i>
+          </button>
+
+          <button class="menu-item" onclick="switchTab('mqtt')">
+            <div class="menu-item-info">
+              <i class="fa-solid fa-network-wired" style="color: #00f2fe;"></i>
+              <div>
+                <h4>MQTT Control</h4>
+                <p>JSON Payload & Terminal Logs</p>
+              </div>
+            </div>
+            <i class="fa-solid fa-chevron-right" style="font-size: 12px;"></i>
+          </button>
+
+          <button class="menu-item" onclick="switchTab('telegram')">
+            <div class="menu-item-info">
+              <i class="fa-brands fa-telegram" style="color: #2481cc;"></i>
+              <div>
+                <h4>Telegram Bot</h4>
+                <p>Interactive Chat & Bot Commands</p>
               </div>
             </div>
             <i class="fa-solid fa-chevron-right" style="font-size: 12px;"></i>
@@ -1632,6 +1915,103 @@
               </div>
             </div>
 
+            <!-- TAB 4: MQTT Control Simulation -->
+            <div id="tab-mqtt" class="tab-content">
+              <div class="mqtt-sim">
+                <div class="mqtt-container">
+                  <div class="mqtt-header">
+                    <div class="mqtt-logo-area">
+                      <div class="mqtt-logo-icon"><i class="fa-solid fa-network-wired"></i></div>
+                      <div class="mqtt-logo-title">
+                        <h1>MQTT Dashboard</h1>
+                        <p>broker.hivemq.com</p>
+                      </div>
+                    </div>
+                    <div class="mqtt-badge">CONNECTED</div>
+                  </div>
+
+                  <div class="mqtt-broker-info">
+                    <strong>Topic:</strong> <span style="color:#00f2fe;">modul-relay-iot/5671922/data</span>
+                  </div>
+
+                  <div class="mqtt-sensor-card">
+                    <div class="mqtt-sensor-item">
+                      <span class="mqtt-sensor-lbl">SUHU</span>
+                      <span class="mqtt-sensor-val"><span id="mqtt-temp">26.5</span>°C</span>
+                    </div>
+                    <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.08);"></div>
+                    <div class="mqtt-sensor-item" id="mqtt-cardHumi">
+                      <span class="mqtt-sensor-lbl">KELEMBABAN</span>
+                      <span class="mqtt-sensor-val"><span id="mqtt-humi">65</span>%</span>
+                    </div>
+                  </div>
+
+                  <div class="mqtt-relays-card">
+                    <div class="mqtt-relay-row">
+                      <span class="mqtt-relay-label">RELAY 1 (GPIO 4)</span>
+                      <label class="switch">
+                        <input type="checkbox" id="mqtt-sw-r1" onchange="toggleMqttRelay(1, this.checked)">
+                        <span class="slider"></span>
+                      </label>
+                    </div>
+                    <div style="height: 1px; background: rgba(255,255,255,0.05);"></div>
+                    <div class="mqtt-relay-row">
+                      <span class="mqtt-relay-label">RELAY 2 (GPIO 5)</span>
+                      <label class="switch">
+                        <input type="checkbox" id="mqtt-sw-r2" onchange="toggleMqttRelay(2, this.checked)">
+                        <span class="slider"></span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style="font-size: 10px; font-weight: 700; color: var(--text-sub); margin-bottom: -5px;">LIVE MQTT TERMINAL LOGS</div>
+                  <div class="mqtt-terminal" id="mqtt-terminal-log">
+                    <div class="mqtt-log-item mqtt-log-info">[08:00:00] [INFO] Connecting to WiFi: ASUS_6C...</div>
+                    <div class="mqtt-log-item mqtt-log-info">[08:00:02] [INFO] WiFi Connected. IP: 192.168.1.50</div>
+                    <div class="mqtt-log-item mqtt-log-info">[08:00:02] [INFO] Connecting to MQTT broker.hivemq.com...</div>
+                    <div class="mqtt-log-item mqtt-log-info">[08:00:03] [INFO] Connected! ClientID: ESP8266Client-5671922</div>
+                    <div class="mqtt-log-item mqtt-log-sub">[08:00:03] [SUBSCRIBE] modul-relay-iot/5671922/relay1/cmd</div>
+                    <div class="mqtt-log-item mqtt-log-sub">[08:00:03] [SUBSCRIBE] modul-relay-iot/5671922/relay2/cmd</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 5: Telegram Bot Simulation -->
+            <div id="tab-telegram" class="tab-content">
+              <div class="telegram-sim">
+                <div class="tg-header">
+                  <div class="tg-avatar">R</div>
+                  <div class="tg-chat-info">
+                    <h3>ModulRelayIoT_Bot</h3>
+                    <p>bot untuk kontrol relay & dht11</p>
+                  </div>
+                </div>
+
+                <div class="tg-chat-area" id="tgChatArea">
+                  <div class="tg-msg tg-msg-in">
+                    Halo! Saya adalah Bot IoT Relay Module.<br><br>Gunakan keyboard menu di bawah atau kirim perintah:<br>/start - Memulai bot<br>/status - Cek sensor & status relay<br>/relay1_on - Nyalakan Relay 1<br>/relay1_off - Matikan Relay 1<br>/relay2_on - Nyalakan Relay 2<br>/relay2_off - Matikan Relay 2
+                    <span class="tg-time">08:00</span>
+                  </div>
+                </div>
+
+                <div class="tg-keyboard">
+                  <div class="tg-input-row">
+                    <input type="text" id="tgInputMessage" placeholder="Tulis pesan..." onkeydown="if(event.key==='Enter') sendTgText()">
+                    <button class="tg-btn-send" onclick="sendTgText()"><i class="fa-solid fa-paper-plane"></i></button>
+                  </div>
+                  <div class="tg-buttons-grid">
+                    <button class="tg-kb-btn" onclick="sendTgCommand('/status')">📊 Cek Status</button>
+                    <button class="tg-kb-btn" onclick="sendTgCommand('/start')">🔄 Reset Bot</button>
+                    <button class="tg-kb-btn" onclick="sendTgCommand('/relay1_on')">💡 R1 ON</button>
+                    <button class="tg-kb-btn" onclick="sendTgCommand('/relay1_off')">🔌 R1 OFF</button>
+                    <button class="tg-kb-btn" onclick="sendTgCommand('/relay2_on')">💡 R2 ON</button>
+                    <button class="tg-kb-btn" onclick="sendTgCommand('/relay2_off')">🔌 R2 OFF</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -1662,6 +2042,12 @@
         menuItems[2].classList.add('active');
         document.getElementById('tab-thermostat').classList.add('active');
         updateThDial();
+      } else if (tabName === 'mqtt') {
+        menuItems[3].classList.add('active');
+        document.getElementById('tab-mqtt').classList.add('active');
+      } else if (tabName === 'telegram') {
+        menuItems[4].classList.add('active');
+        document.getElementById('tab-telegram').classList.add('active');
       }
     }
 
@@ -1742,19 +2128,24 @@
       // Update display values
       document.getElementById('mon-temp').innerText = newVal;
       document.getElementById('th-currTemp').innerText = newVal;
+      document.getElementById('mqtt-temp').innerText = newVal;
       
       // Kelembaban simulation
       let humiVal = Math.round(55 + Math.random() * 15);
       if (currentSensorType == '2') { // DS18B20 doesn't have humidity
         document.getElementById('mon-humi').innerText = '--';
         document.getElementById('th-currHumi').innerText = '--';
+        document.getElementById('mqtt-humi').innerText = '--';
         document.getElementById('mon-cardHumi').style.opacity = '0.35';
         document.getElementById('th-cardHumi').style.opacity = '0.35';
+        document.getElementById('mqtt-cardHumi').style.opacity = '0.35';
       } else {
         document.getElementById('mon-humi').innerText = humiVal;
         document.getElementById('th-currHumi').innerText = humiVal;
+        document.getElementById('mqtt-humi').innerText = humiVal;
         document.getElementById('mon-cardHumi').style.opacity = '1';
         document.getElementById('th-cardHumi').style.opacity = '1';
+        document.getElementById('mqtt-cardHumi').style.opacity = '1';
       }
 
       // Add to chart
@@ -1773,6 +2164,14 @@
       // Thermostat automatic logic simulation if in Auto mode
       if (thMode === 0) {
         runThermostatAutoLogic(newVal);
+      }
+
+      // Periodically publish MQTT telemetry (every 9 seconds / 3 ticks)
+      if (!window.mqttPublishTicks) window.mqttPublishTicks = 0;
+      window.mqttPublishTicks++;
+      if (window.mqttPublishTicks >= 3) {
+        window.mqttPublishTicks = 0;
+        sendMqttJsonPayload();
       }
     }
 
@@ -1960,7 +2359,151 @@
       }, 2000);
     }
 
+    // 4. MQTT Logic
+    let mqttR1 = false;
+    let mqttR2 = false;
 
+    function toggleMqttRelay(id, isChecked) {
+      if (id === 1) mqttR1 = isChecked;
+      if (id === 2) mqttR2 = isChecked;
+      
+      const timeStr = getCurrTimeStr();
+      writeMqttLog('sub', `[${timeStr}] [RECEIVED] modul-relay-iot/5671922/relay${id}/cmd -> "${isChecked ? '1' : '0'}"`);
+      
+      setTimeout(() => {
+        writeMqttLog('info', `[${getCurrTimeStr()}] [INFO] Relay ${id} set to ${isChecked ? 'ON' : 'OFF'}`);
+        // Publish status update immediately
+        sendMqttJsonPayload();
+        
+        // Sync to telegram
+        if (id === 1) tgR1 = isChecked;
+        if (id === 2) tgR2 = isChecked;
+      }, 300);
+    }
+
+    function sendMqttJsonPayload() {
+      const tempVal = parseFloat(document.getElementById('mqtt-temp').innerText) || 26.5;
+      const humiText = document.getElementById('mqtt-humi').innerText;
+      const humiVal = humiText === '--' ? null : parseInt(humiText);
+      
+      const payload = {
+        suhu: tempVal,
+        kelembaban: humiVal,
+        relay1: mqttR1 ? 1 : 0,
+        relay2: mqttR2 ? 1 : 0
+      };
+      
+      writeMqttLog('pub', `[${getCurrTimeStr()}] [PUBLISH] modul-relay-iot/5671922/data -> ${JSON.stringify(payload)}`);
+    }
+
+    function writeMqttLog(type, msg) {
+      const term = document.getElementById('mqtt-terminal-log');
+      if (!term) return;
+      const item = document.createElement('div');
+      item.className = `mqtt-log-item mqtt-log-${type}`;
+      item.innerText = msg;
+      term.appendChild(item);
+      term.scrollTop = term.scrollHeight;
+      
+      // Limit to 30 logs
+      while (term.children.length > 30) {
+        term.removeChild(term.firstChild);
+      }
+    }
+
+    function getCurrTimeStr() {
+      const now = new Date();
+      return now.getHours().toString().padStart(2, '0') + ':' + 
+             now.getMinutes().toString().padStart(2, '0') + ':' + 
+             now.getSeconds().toString().padStart(2, '0');
+    }
+
+    // 5. Telegram Bot Logic
+    let tgR1 = false;
+    let tgR2 = false;
+
+    function sendTgText() {
+      const input = document.getElementById('tgInputMessage');
+      const text = input.value.trim();
+      if (!text) return;
+      
+      appendTgMsg(text, 'out');
+      input.value = '';
+      
+      processTgCommand(text);
+    }
+
+    function sendTgCommand(cmd) {
+      appendTgMsg(cmd, 'out');
+      processTgCommand(cmd);
+    }
+
+    function appendTgMsg(text, direction) {
+      const chat = document.getElementById('tgChatArea');
+      if (!chat) return;
+      const msg = document.createElement('div');
+      msg.className = `tg-msg tg-msg-${direction}`;
+      
+      const timeStr = nowHourMinStr();
+      msg.innerHTML = text.replace(/\n/g, '<br>') + `<span class="tg-time">${timeStr}</span>`;
+      
+      chat.appendChild(msg);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function nowHourMinStr() {
+      const now = new Date();
+      return now.getHours().toString().padStart(2, '0') + ':' + 
+             now.getMinutes().toString().padStart(2, '0');
+    }
+
+    function processTgCommand(cmd) {
+      const cleanCmd = cmd.toLowerCase().trim();
+      let reply = "";
+      
+      setTimeout(() => {
+        const tempVal = parseFloat(document.getElementById('th-currTemp').innerText) || 26.5;
+        const humiText = document.getElementById('th-currHumi').innerText;
+        
+        if (cleanCmd === '/start') {
+          reply = "Halo! Saya adalah Bot IoT Relay Module.\n\nGunakan tombol di bawah untuk mengontrol relay & memantau sensor DHT11 Anda.";
+        } else if (cleanCmd === '/status') {
+          reply = `📊 *STATUS MODUL*:\n\n🌡️ Suhu: ${tempVal}°C\n💧 Kelembaban: ${humiText}%\n🔌 Relay 1: ${tgR1 ? 'ON 🟢' : 'OFF 🔴'}\n🔌 Relay 2: ${tgR2 ? 'ON 🟢' : 'OFF 🔴'}`;
+        } else if (cleanCmd === '/relay1_on') {
+          tgR1 = true;
+          syncRelaysFromTg();
+          reply = "💡 Relay 1 berhasil dinyalakan! (ON 🟢)";
+        } else if (cleanCmd === '/relay1_off') {
+          tgR1 = false;
+          syncRelaysFromTg();
+          reply = "🔌 Relay 1 berhasil dimatikan! (OFF 🔴)";
+        } else if (cleanCmd === '/relay2_on') {
+          tgR2 = true;
+          syncRelaysFromTg();
+          reply = "💡 Relay 2 berhasil dinyalakan! (ON 🟢)";
+        } else if (cleanCmd === '/relay2_off') {
+          tgR2 = false;
+          syncRelaysFromTg();
+          reply = "🔌 Relay 2 berhasil dimatikan! (OFF 🔴)";
+        } else {
+          reply = "⚠️ Perintah tidak dikenal. Silakan kirim /status untuk mengecek opsi.";
+        }
+        
+        appendTgMsg(reply, 'in');
+      }, 600);
+    }
+
+    function syncRelaysFromTg() {
+      const sw1 = document.getElementById('mqtt-sw-r1');
+      const sw2 = document.getElementById('mqtt-sw-r2');
+      if (sw1) sw1.checked = tgR1;
+      if (sw2) sw2.checked = tgR2;
+      mqttR1 = tgR1;
+      mqttR2 = tgR2;
+      
+      // Publish update immediately
+      sendMqttJsonPayload();
+    }
 
     // Initialize chart on page load
     window.onload = function() {

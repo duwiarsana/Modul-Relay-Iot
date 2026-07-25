@@ -45,6 +45,8 @@ void initSensor() {
   if (sensors != nullptr) { delete sensors; sensors = nullptr; }
   if (oneWire != nullptr) { delete oneWire; oneWire = nullptr; }
 
+  pinMode(DHTPIN, INPUT_PULLUP);
+
   if (settings.sensorType == 0) {
     dht = new DHT(DHTPIN, DHT11);
     dht->begin();
@@ -925,6 +927,11 @@ void loop() {
       if (dht != nullptr) {
         t = dht->readTemperature();
         h = dht->readHumidity();
+        if (isnan(t) || isnan(h)) {
+          delay(50);
+          t = dht->readTemperature();
+          h = dht->readHumidity();
+        }
       }
     } else if (settings.sensorType == 2) {
       if (sensors != nullptr) {

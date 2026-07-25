@@ -43,6 +43,8 @@ void initSensor() {
   if (sensors != nullptr) { delete sensors; sensors = nullptr; }
   if (oneWire != nullptr) { delete oneWire; oneWire = nullptr; }
 
+  pinMode(DHTPIN, INPUT_PULLUP);
+
   if (config.sensorType == 0) {
     dht = new DHT(DHTPIN, DHT11);
     dht->begin();
@@ -70,6 +72,8 @@ void loadConfig() {
   EEPROM.get(0, config);
   if (config.sensorType > 2) {
     config.sensorType = 0; // Default DHT11
+    EEPROM.put(0, config);
+    EEPROM.commit();
   }
   if (config.relay1 != 0 && config.relay1 != 1) config.relay1 = false;
   if (config.relay2 != 0 && config.relay2 != 1) config.relay2 = false;
@@ -723,6 +727,11 @@ void loop() {
       if (dht != nullptr) {
         float t = dht->readTemperature();
         float h = dht->readHumidity();
+        if (isnan(t) || isnan(h)) {
+          delay(50);
+          t = dht->readTemperature();
+          h = dht->readHumidity();
+        }
         if (!isnan(t)) suhu = t;
         if (!isnan(h)) kelembaban = h;
       }
